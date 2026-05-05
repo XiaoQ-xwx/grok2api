@@ -1,10 +1,12 @@
 """Shared SQLAlchemy Core backend for user/key/audit storage (MySQL / PostgreSQL / SQLite)."""
 
 import json
+import ssl
 import uuid
 from datetime import datetime
 from threading import Lock
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -104,7 +106,7 @@ def _engine_key(dialect: str, url: str) -> str:
     return f"{dialect}::{url}"
 
 
-def _get_or_create_engine(dialect: str, url: str) -> AsyncEngine:
+def _get_or_create_engine(dialect: str, url: str, connect_args: dict[str, Any] | None = None) -> AsyncEngine:
     key = _engine_key(dialect, url)
     with _ENGINE_LOCK:
         if key not in _ENGINE_CACHE:
@@ -113,7 +115,10 @@ def _get_or_create_engine(dialect: str, url: str) -> AsyncEngine:
                     url, echo=False, connect_args={"check_same_thread": False}
                 )
             else:
-                _ENGINE_CACHE[key] = create_async_engine(url, echo=False, pool_size=10, max_overflow=20)
+                kw: dict[str, Any] = {"echo": False, "pool_size": 10, "max_overflow": 20}
+                if connect_args:
+                    kw["connect_args"] = connect_args
+                _ENGINE_CACHE[key] = create_async_engine(url, **kw)
         return _ENGINE_CACHE[key]
 
 
@@ -545,15 +550,69 @@ def create_mysql_engine(url: str) -> AsyncEngine:
     return _get_or_create_engine("mysql", url)
 
 
-def _normalize_pgsql_url(url: str) -> str:
+_PG_SSLMODE_ALIASES: dict[str, str] = {
+    "disable": "disable",
+    "allow": "allow",
+    "prefer": "prefer",
+    "require": "require",
+    "verify-ca": "verify-ca",
+    "verify-full": "verify-full",
+}
+
+
+def _build_pg_ssl_context(sslmode: str) -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    if sslmode == "disable":
+        return ctx
+    if sslmode == "require":
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    elif sslmode == "verify-ca":
+        ctx.check_hostname = False
+    else:
+        ctx.check_hostname = True
+    return ctx
+
+
+def _prepare_pgsql_url(url: str) -> tuple[str, dict[str, Any] | None]:
+    """Normalize PostgreSQL URL scheme and extract sslmode → connect_args."""
+    # Normalize scheme
+    normalized = url
     if url.startswith("postgres://"):
-        return f"postgresql+asyncpg://{url[len('postgres://'):]}"
-    if url.startswith("postgresql://"):
-        return f"postgresql+asyncpg://{url[len('postgresql://'):]}"
-    if url.startswith("pgsql://"):
-        return f"postgresql+asyncpg://{url[len('pgsql://'):]}"
-    return url
+        normalized = f"postgresql+asyncpg://{url[len('postgres://'):]}"
+    elif url.startswith("postgresql://"):
+        normalized = f"postgresql+asyncpg://{url[len('postgresql://'):]}"
+    elif url.startswith("pgsql://"):
+        normalized = f"postgresql+asyncpg://{url[len('pgsql://'):]}"
+
+    # Extract sslmode from query params (asyncpg does not accept sslmode)
+    if "://" not in normalized:
+        return normalized, None
+
+    parsed = urlparse(normalized)
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    sslmode: str | None = None
+    filtered: list[tuple[str, str]] = []
+    for key, value in query_items:
+        if key.lower() == "sslmode":
+            if not sslmode:
+                sslmode = value.strip().lower()
+            continue
+        filtered.append((key, value))
+
+    cleaned_url = urlunparse(parsed._replace(query=urlencode(filtered, doseq=True)))
+    if not sslmode:
+        return cleaned_url, None
+
+    canonical = _PG_SSLMODE_ALIASES.get(sslmode)
+    if not canonical:
+        raise ValueError(f"Unsupported PostgreSQL sslmode: {sslmode!r}")
+    if canonical == "disable":
+        return cleaned_url, None
+
+    return cleaned_url, {"ssl": _build_pg_ssl_context(canonical)}
 
 
 def create_pgsql_engine(url: str) -> AsyncEngine:
-    return _get_or_create_engine("postgresql", _normalize_pgsql_url(url))
+    cleaned_url, connect_args = _prepare_pgsql_url(url)
+    return _get_or_create_engine("postgresql", cleaned_url, connect_args)
