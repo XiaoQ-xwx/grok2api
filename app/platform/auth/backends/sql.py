@@ -545,5 +545,15 @@ def create_mysql_engine(url: str) -> AsyncEngine:
     return _get_or_create_engine("mysql", url)
 
 
+def _normalize_pgsql_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return f"postgresql+asyncpg://{url[len('postgres://'):]}"
+    if url.startswith("postgresql://"):
+        return f"postgresql+asyncpg://{url[len('postgresql://'):]}"
+    if url.startswith("pgsql://"):
+        return f"postgresql+asyncpg://{url[len('pgsql://'):]}"
+    return url
+
+
 def create_pgsql_engine(url: str) -> AsyncEngine:
-    return _get_or_create_engine("postgresql", url)
+    return _get_or_create_engine("postgresql", _normalize_pgsql_url(url))
