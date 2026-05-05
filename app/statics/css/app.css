@@ -22,9 +22,10 @@ button{cursor:pointer}
 .login-title{margin-top:6px;font-size:18px;font-weight:600}
 .login-subtitle{margin-top:4px;font-size:12px;color:var(--fg-muted)}
 .login-form{margin-top:16px;display:grid;gap:10px}
-.login-divider{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--fg-subtle)}
+.login-divider{display:flex;align-items:center;gap:10px;margin:20px 0 4px;font-size:11px;color:var(--fg-muted)}
 .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.linuxdo-btn{gap:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--fg)}
+.linuxdo-btn{gap:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--fg);opacity:0;transition:opacity .3s}
+.linuxdo-btn.visible{opacity:1}
 .linuxdo-btn:hover{background:var(--bg)}
 
 /* Button */
@@ -1130,3 +1131,39 @@ textarea.input.webui-textarea{padding:8px 0 !important;resize:none !important}
 .cb{width:14px;height:14px;accent-color:var(--fg);cursor:pointer}
 .action-btns{display:flex;gap:4px}
 .empty-state{text-align:center;padding:40px;color:var(--fg-muted);font-size:13px}
+
+/* User profile (sidebar bottom) */
+.profile-area{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--border);margin-top:auto}
+.profile-avatar{border-radius:999px;object-fit:cover;flex:0 0 auto}
+.profile-avatar-pl{width:32px;height:32px;border-radius:999px;background:var(--fg);color:var(--bg-card);display:grid;place-items:center;font-size:14px;font-weight:600;flex:0 0 auto}
+.profile-info{min-width:0;display:grid;gap:1px}
+.profile-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-level{font-size:11px;color:var(--fg-muted)}
+
+/* Keys panel */
+.keys-panel{max-width:940px;margin:0 auto 0;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md)}
+.keys-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.keys-panel-title{font-size:13px;font-weight:600}
+.keys-list{display:grid;gap:6px;max-height:280px;overflow:auto}
+.keys-empty{font-size:12px;color:var(--fg-muted);text-align:center;padding:16px}
+.key-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);background:var(--bg)}
+.key-row:hover{background:var(--border)}
+.key-info{min-width:0;display:grid;gap:2px;flex:1}
+.key-mono{font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-muted)}
+.key-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.key-meta{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.key-date{font-size:11px;color:var(--fg-subtle)}
+.key-badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px}
+.key-badge-banned{background:var(--error-bg);color:var(--error)}
+.key-delete{width:24px;height:24px;padding:0;border-radius:6px;display:grid;place-items:center;color:var(--fg-subtle);flex:0 0 auto}
+.key-delete:hover{background:var(--error-bg);color:var(--error)}
+.key-raw-display{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius);background:var(--bg);word-break:break-all}
+.key-raw-display code{font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--fg);flex:1}
+
+/* Admin user/key/audit tables */
+.admin-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);overflow:hidden}
+.admin-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.admin-panel-title{font-size:15px;font-weight:600}
+.admin-panel-body{padding:14px 18px}
+.admin-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.admin-filter-bar .input{height:30px;font-size:12px;max-width:200px}

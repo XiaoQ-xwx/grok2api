@@ -153,6 +153,43 @@ async def lifespan(app: FastAPI):
     app.state.repository = repo
     app.state.directory = directory
 
+    # 2b. Initialise user-key repository (shared storage backend).
+    from app.platform.auth.backends.factory import (
+        create_user_key_repository,
+        describe_key_repository_target,
+    )
+
+    _key_backend, _key_target = describe_key_repository_target()
+    logger.info(
+        "user-key storage configured: backend={} target={}",
+        _key_backend,
+        _key_target,
+    )
+
+    user_key_repo = create_user_key_repository()
+    await user_key_repo.initialize()
+    app.state.user_key_repo = user_key_repo
+
+    # 2c. Audit log retention cleanup (runs on startup and periodically).
+    async def _audit_cleanup_loop() -> None:
+        retention_days = _config.get_int("audit.retention_days", 30) or 30
+        while True:
+            await asyncio.sleep(3600)  # every hour
+            try:
+                from datetime import datetime, timedelta
+                cutoff = datetime.utcnow() - timedelta(days=retention_days)
+                deleted = await user_key_repo.cleanup_audit_logs(cutoff)
+                if deleted:
+                    logger.info("audit log cleanup: deleted={}", deleted)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.debug("audit log cleanup error: error={}", exc)
+
+    audit_cleanup_task = asyncio.create_task(
+        _audit_cleanup_loop(), name="audit-cleanup"
+    )
+
     # 3. Account directory sync loop — all workers, lightweight incremental pull.
     #    Keeps each worker's in-memory table eventually consistent with the repo.
     #
@@ -256,6 +293,12 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
+    audit_cleanup_task.cancel()
+    try:
+        await audit_cleanup_task
+    except asyncio.CancelledError:
+        pass
+
     if is_leader:
         scheduler.stop()
         proxy_scheduler.stop()
@@ -265,6 +308,7 @@ async def lifespan(app: FastAPI):
     set_refresh_scheduler_leader(False)
     set_refresh_service(None)
     await repo.close()
+    await user_key_repo.close()
     logger.info("application shutdown completed")
 
 
@@ -338,6 +382,18 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Audit middleware — fire-and-forget per-request audit logging for /v1/*.
+    from app.platform.auth.audit import AuditMiddleware
+
+    def _get_audit_repo():
+        return getattr(app.state, "user_key_repo", None)
+
+    app.add_middleware(
+        AuditMiddleware,
+        get_repo=_get_audit_repo,
+        enabled=True,
     )
 
     # Ensure config is loaded on every request.

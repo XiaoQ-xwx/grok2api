@@ -701,5 +701,59 @@
     "startFailed": "启动失败：{message}",
     "cancelInProgress": "已暂停，请耐心等待本批次完成…",
     "na": "—"
+  },
+  "keys": {
+    "title": "API 密钥",
+    "noKeys": "暂无 API 密钥",
+    "create": "创建密钥",
+    "createTitle": "创建 API 密钥",
+    "createDesc": "为密钥命名以便记忆其用途。",
+    "namePlaceholder": "密钥名称",
+    "createdTitle": "密钥已创建",
+    "createdWarning": "请立即复制密钥 — 关闭后将无法再次查看。",
+    "copy": "复制",
+    "copied": "密钥已复制！",
+    "banned": "已封禁",
+    "delete": "删除",
+    "confirmDelete": "确定要删除此 API 密钥吗？删除后立即失效。",
+    "deleted": "密钥已删除。",
+    "deleteError": "删除密钥失败。"
+  },
+  "admin": {
+    "userManagement": "用户管理",
+    "auditLogs": "审计日志",
+    "users": {
+      "title": "用户管理",
+      "create": "创建用户",
+      "username": "用户名",
+      "name": "名称",
+      "provider": "来源",
+      "active": "活跃",
+      "keys": "密钥数",
+      "created": "创建时间",
+      "lastLogin": "最后登录",
+      "actions": "操作"
+    },
+    "keys": {
+      "title": "密钥管理",
+      "createFor": "为用户创建密钥",
+      "rpm": "RPM 限制",
+      "setRpm": "设置 RPM",
+      "ban": "封禁",
+      "unban": "解封",
+      "revoke": "撤销",
+      "noLimit": "无限制"
+    },
+    "audit": {
+      "title": "审计日志",
+      "filterUser": "按用户筛选",
+      "filterEndpoint": "按端点筛选",
+      "filterModel": "按模型筛选",
+      "timeFrom": "开始时间",
+      "timeTo": "结束时间",
+      "authType": "认证类型",
+      "globalKey": "全局密钥",
+      "userKey": "用户密钥"
+    }
   }
 }

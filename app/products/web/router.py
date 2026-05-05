@@ -12,6 +12,7 @@ from app.platform.auth.linuxdo import (
     get_authorize_url,
     is_linuxdo_enabled,
     issue_token,
+    upsert_linuxdo_user,
     verify_state,
 )
 from app.platform.auth.middleware import is_webui_enabled, verify_webui_key
@@ -72,6 +73,9 @@ async def linuxdo_callback(request: Request, code: str = Query(...), state: str 
     user = await fetch_user(access_token)
     if not user:
         return HTMLResponse("<h3>OAuth 授权失败：无法获取用户信息</h3>", status_code=400)
+
+    user_key_repo = getattr(request.app.state, "user_key_repo", None)
+    await upsert_linuxdo_user(user, repo=user_key_repo)
 
     token = issue_token(user)
     qs = urlencode({"oauth_token": token})

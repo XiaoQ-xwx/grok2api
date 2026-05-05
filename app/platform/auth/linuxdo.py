@@ -14,6 +14,7 @@ import aiohttp
 
 from app.platform.auth.middleware import get_admin_key
 from app.platform.config.snapshot import get_config
+from app.platform.logging.logger import logger
 
 AUTHORIZE_URL = "https://connect.linux.do/oauth2/authorize"
 TOKEN_URL = "https://connect.linux.do/oauth2/token"
@@ -26,6 +27,7 @@ class LinuxDoUser(NamedTuple):
     username: str
     name: str | None
     avatar_url: str | None
+    trust_level: int | None = None
 
 
 def _get_config(key: str, default: str = "") -> str:
@@ -92,6 +94,7 @@ def issue_token(user: LinuxDoUser) -> str:
         "uid": user.id,
         "name": user.name or user.username,
         "av": user.avatar_url or "",
+        "tl": user.trust_level or 0,
         "iat": int(time.time()),
     })
     return f"{TOKEN_PREFIX}{payload}.{_sign(payload)}"
@@ -113,9 +116,52 @@ def verify_token(token: str) -> LinuxDoUser | None:
             username=data.get("un", data["name"]),
             name=data.get("name"),
             avatar_url=data.get("av"),
+            trust_level=data.get("tl"),
         )
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# User persistence — upsert on OAuth login
+# ---------------------------------------------------------------------------
+
+async def upsert_linuxdo_user(linuxdo_user: LinuxDoUser, repo=None):
+    """Create or update local user record from LinuxDo OAuth data.
+
+    Args:
+        linuxdo_user: The LinuxDo user data from the OAuth provider.
+        repo: A ``UserKeyRepository`` instance. If ``None``, the function
+              returns ``None`` (repository not available).
+
+    Returns the local User model, or None if the repository is unavailable.
+    """
+    if repo is None:
+        logger.warning("UserKeyRepository not available — skipping LinuxDo user upsert.")
+        return None
+
+    existing = await repo.get_user_by_provider("linuxdo", linuxdo_user.id)
+    if existing:
+        from .models import UserUpdate
+        await repo.update_user(
+            existing.id,
+            UserUpdate(
+                username=linuxdo_user.username,
+                name=linuxdo_user.name or existing.name,
+                avatar_url=linuxdo_user.avatar_url or existing.avatar_url,
+            ),
+        )
+        return await repo.get_user(existing.id)
+
+    user = await repo.create_user(
+        provider="linuxdo",
+        provider_user_id=linuxdo_user.id,
+        username=linuxdo_user.username,
+        name=linuxdo_user.name,
+        avatar_url=linuxdo_user.avatar_url,
+        trust_level=linuxdo_user.trust_level,
+    )
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -157,9 +203,12 @@ async def fetch_user(access_token: str) -> LinuxDoUser | None:
             if resp.status != 200:
                 return None
             data = await resp.json()
+            # LinuxDo API may return trust_level under different keys
+            trust_level = data.get("trust_level") or data.get("trustLevel") or data.get("trust_level_manual")
             return LinuxDoUser(
                 id=data.get("id", 0),
                 username=data.get("username", ""),
                 name=data.get("name"),
                 avatar_url=data.get("avatar_url"),
+                trust_level=int(trust_level) if trust_level is not None else None,
             )

@@ -52,7 +52,9 @@
 
     if (LINUXDO_ENABLED) {
       document.getElementById('ld-divider').style.display = 'flex';
-      document.getElementById('ld-btn').style.display = 'inline-flex';
+      const btn = document.getElementById('ld-btn');
+      btn.style.display = 'inline-flex';
+      requestAnimationFrame(() => btn.classList.add('visible'));
     }
 
     function linuxdoLogin() {

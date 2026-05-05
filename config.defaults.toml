@@ -20,6 +20,18 @@ client_id = "fwcUCLekUW7DWBQDhXkft7xjj05a6oWt"
 client_secret = "FP18X154Z20HbLLYoH1WWTeE6c8htuty"
 
 
+# ==================== 用户管理 ====================
+[user]
+# 每用户最大 Key 数量
+max_keys = 10
+
+# ==================== 审计日志 ====================
+[audit]
+# 是否启用审计日志
+enabled = true
+# 审计日志保留天数
+retention_days = 30
+
 # ==================== 日志配置 ====================
 [logging]
 # 写入文件等级

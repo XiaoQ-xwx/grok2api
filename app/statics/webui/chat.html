@@ -22,6 +22,9 @@
           <button id="newChatBtn" class="webui-sidebar-toggle webui-sidebar-new-btn" type="button" data-i18n-aria-label="webui.chat.newChat" data-i18n-title="webui.chat.newChat">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </button>
+          <button id="keysToggleBtn" class="webui-sidebar-toggle" type="button" data-i18n-aria-label="keys.title" data-i18n-title="keys.title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777z"/><circle cx="11" cy="11" r="1"/></svg>
+          </button>
           <button id="sidebarToggleBtn" class="webui-sidebar-toggle" type="button" data-i18n-aria-label="webui.chat.toggleSidebar" data-i18n-title="webui.chat.toggleSidebar" aria-expanded="true">
             <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 5v14" stroke="currentColor" stroke-width="1.6"/></svg>
           </button>
@@ -31,9 +34,18 @@
       <section class="webui-sidebar-sessions">
         <div id="sessionList" class="webui-session-list"></div>
       </section>
+
+      <div id="userProfile" class="profile-area" style="display:none"></div>
     </aside>
 
     <section class="webui-workspace">
+      <div id="keysPanel" class="keys-panel" style="display:none">
+        <div class="keys-panel-header">
+          <span class="keys-panel-title" data-i18n="keys.title">API Keys</span>
+          <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
+        </div>
+        <div id="keyList" class="keys-list"></div>
+      </div>
       <section class="webui-chat-pane">
         <section class="webui-thread-shell">
           <main id="thread" class="webui-thread">
@@ -80,6 +92,31 @@
     </div>
   </div>
 
+  <div id="keyCreateModal" class="modal-overlay" aria-hidden="true" style="display:none">
+    <div class="modal">
+      <div id="keyCreateForm">
+        <div class="modal-title" data-i18n="keys.createTitle">Create API Key</div>
+        <div class="text-xs text-muted mt-2" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</div>
+        <input id="keyNameInput" class="input mt-2 w-full" type="text" placeholder="Key name" data-i18n-placeholder="keys.namePlaceholder">
+        <div class="modal-footer">
+          <button id="keyCreateCancel" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">取消</button>
+          <button id="keyCreateConfirm" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">确认</button>
+        </div>
+      </div>
+      <div id="keyCreateResult" style="display:none">
+        <div class="modal-title" data-i18n="keys.createdTitle">Key Created</div>
+        <div class="text-xs text-muted mt-2" data-i18n="keys.createdWarning">Copy this key now — it will not be shown again.</div>
+        <div class="key-raw-display mt-2">
+          <code id="rawKeyDisplay" class="key-mono"></code>
+          <button id="copyRawKeyBtn" class="btn btn-outline" style="font-size:11px;height:26px" data-i18n="keys.copy">Copy</button>
+        </div>
+        <div class="modal-footer">
+          <button id="keyCreateClose" type="button" class="btn btn-ghost" onclick="document.getElementById('keyCreateModal').style.display='none'" data-i18n="webui.chat.cancel">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
@@ -88,5 +125,6 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script src="/static/js/webui/chat.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/webui/keys.js?v={{APP_VERSION}}"></script>
 </body>
 </html>

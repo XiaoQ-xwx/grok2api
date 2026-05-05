@@ -701,5 +701,59 @@
     "startFailed": "Failed to start: {message}",
     "cancelInProgress": "Cancellation requested. Wait for the current batch to finish.",
     "na": "—"
+  },
+  "keys": {
+    "title": "API Keys",
+    "noKeys": "No API keys yet.",
+    "create": "Create Key",
+    "createTitle": "Create API Key",
+    "createDesc": "Give your key a name to remember its purpose.",
+    "namePlaceholder": "Key name",
+    "createdTitle": "Key Created",
+    "createdWarning": "Copy this key now — it will not be shown again.",
+    "copy": "Copy",
+    "copied": "Key copied!",
+    "banned": "Banned",
+    "delete": "Delete",
+    "confirmDelete": "Delete this API key? It will stop working immediately.",
+    "deleted": "Key deleted.",
+    "deleteError": "Failed to delete key."
+  },
+  "admin": {
+    "userManagement": "User Management",
+    "auditLogs": "Audit Logs",
+    "users": {
+      "title": "User Management",
+      "create": "Create User",
+      "username": "Username",
+      "name": "Name",
+      "provider": "Provider",
+      "active": "Active",
+      "keys": "Keys",
+      "created": "Created",
+      "lastLogin": "Last Login",
+      "actions": "Actions"
+    },
+    "keys": {
+      "title": "Key Management",
+      "createFor": "Create Key for User",
+      "rpm": "RPM Limit",
+      "setRpm": "Set RPM",
+      "ban": "Ban",
+      "unban": "Unban",
+      "revoke": "Revoke",
+      "noLimit": "Unlimited"
+    },
+    "audit": {
+      "title": "Audit Logs",
+      "filterUser": "Filter by User",
+      "filterEndpoint": "Filter by Endpoint",
+      "filterModel": "Filter by Model",
+      "timeFrom": "From",
+      "timeTo": "To",
+      "authType": "Auth Type",
+      "globalKey": "Global Key",
+      "userKey": "User Key"
+    }
   }
 }

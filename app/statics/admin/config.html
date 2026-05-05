@@ -730,6 +730,12 @@ const SCHEMA_DEF = [
       },
     ]
   },
+  {
+    id: 'users', label: '用户管理', labelKey: 'admin.userManagement', groups: [],
+  },
+  {
+    id: 'audit', label: '审计日志', labelKey: 'admin.auditLogs', groups: [],
+  },
 ];
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -1198,6 +1204,9 @@ function renderAll() {
     panels.appendChild(renderPanel(tab));
   });
   _tabButtons.forEach((_, tabId) => _syncTabDirtyState(tabId));
+
+  // Populate admin management panels
+  setTimeout(() => { renderUsersPanel(); renderAuditPanel(); }, 50);
 }
 
 function switchTab(id) {
@@ -1313,6 +1322,117 @@ function doReset() {
   renderAll();
   _refreshDirtyState({ autoNormalizeSelects: false });
   showToast(tr('config.resetSuccess', null, '未保存的更改已撤销'), 'info');
+}
+
+// ── Admin: Users panel ─────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const resp = await fetch(ADMIN_API + '/users', { headers: await authHeaders() });
+    if (!resp.ok) throw new Error(resp.status);
+    return await resp.json();
+  } catch { return { items: [], total: 0 }; }
+}
+
+function renderUsersPanel() {
+  const panel = document.getElementById('panel-users');
+  if (!panel || panel.querySelector('.admin-panel')) return;
+  panel.innerHTML = `<div class="admin-panel">
+    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.users.title">用户管理</span></div>
+    <div class="admin-panel-body"><div id="usersTable" class="table-card"><div class="empty-state">加载中…</div></div></div>
+  </div>`;
+  populateUsersTable();
+}
+
+async function populateUsersTable() {
+  const data = await loadUsers();
+  const container = document.getElementById('usersTable');
+  if (!container) return;
+  if (!data.items.length) {
+    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
+    return;
+  }
+  const rows = data.items.map(item => {
+    const u = item.user;
+    return `<tr>
+      <td>${escHtml(u.username)}</td>
+      <td>${escHtml(u.name || '-')}</td>
+      <td><span class="badge ${u.provider === 'linuxdo' ? 'badge-premium' : 'badge-basic'}">${escHtml(u.provider)}</span></td>
+      <td>${u.is_active ? '<span class="badge badge-active">活跃</span>' : '<span class="badge badge-expired">停用</span>'}</td>
+      <td>${item.key_count}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+    </tr>`;
+  }).join('');
+  container.innerHTML = `<table><thead><tr>
+    <th data-i18n="admin.users.username">用户名</th>
+    <th data-i18n="admin.users.name">名称</th>
+    <th data-i18n="admin.users.provider">来源</th>
+    <th data-i18n="admin.users.active">活跃</th>
+    <th data-i18n="admin.users.keys">密钥数</th>
+    <th data-i18n="admin.users.created">创建时间</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── Admin: Audit panel ──────────────────────────────────────────────────────
+async function loadAuditLogs(params = '') {
+  try {
+    const resp = await fetch(ADMIN_API + '/audit-logs?page_size=50' + params, { headers: await authHeaders() });
+    if (!resp.ok) throw new Error(resp.status);
+    return await resp.json();
+  } catch { return { items: [], total: 0 }; }
+}
+
+function renderAuditPanel() {
+  const panel = document.getElementById('panel-audit');
+  if (!panel || panel.querySelector('.admin-panel')) return;
+  panel.innerHTML = `<div class="admin-panel">
+    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.audit.title">审计日志</span></div>
+    <div class="admin-panel-body">
+      <div class="admin-filter-bar">
+        <input id="auditFilterUser" class="input" placeholder="用户 ID" data-i18n-placeholder="admin.audit.filterUser" style="max-width:180px">
+        <input id="auditFilterEndpoint" class="input" placeholder="端点" placeholder="Endpoint" data-i18n-placeholder="admin.audit.filterEndpoint" style="max-width:140px">
+        <button class="btn btn-sm btn-outline" onclick="populateAuditTable()">筛选</button>
+      </div>
+      <div id="auditTable" class="table-card"><div class="empty-state">加载中…</div></div>
+    </div>
+  </div>`;
+  populateAuditTable();
+}
+
+async function populateAuditTable() {
+  let params = '';
+  const uid = document.getElementById('auditFilterUser')?.value.trim();
+  const ep = document.getElementById('auditFilterEndpoint')?.value.trim();
+  if (uid) params += '&user_id=' + encodeURIComponent(uid);
+  if (ep) params += '&endpoint=' + encodeURIComponent(ep);
+  const data = await loadAuditLogs(params);
+  const container = document.getElementById('auditTable');
+  if (!container) return;
+  if (!data.items.length) {
+    container.innerHTML = `<div class="empty-state">暂无审计日志</div>`;
+    return;
+  }
+  const rows = data.items.map(e => `<tr>
+    <td style="font-size:11px">${new Date(e.timestamp).toLocaleString()}</td>
+    <td>${escHtml(e.user_id || '-')}</td>
+    <td>${escHtml(e.endpoint)}</td>
+    <td>${escHtml(e.model || '-')}</td>
+    <td>${e.status_code}</td>
+    <td><span class="badge ${e.auth_type === 'user_key' ? 'badge-premium' : 'badge-basic'}">${e.auth_type === 'user_key' ? '用户密钥' : '全局密钥'}</span></td>
+  </tr>`).join('');
+  container.innerHTML = `<table><thead><tr>
+    <th>时间</th><th>用户</th><th>端点</th><th>模型</th><th>状态码</th><th>认证类型</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function authHeaders() {
+  const key = await adminKey.get();
+  return key ? { Authorization: `Bearer ${key}` } : {};
+}
+
+function escHtml(s) {
+  const el = document.createElement('span');
+  el.textContent = s || '';
+  return el.innerHTML;
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
