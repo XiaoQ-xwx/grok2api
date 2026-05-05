@@ -6,3 +6,4 @@
 | Date | Context-Id | Commit | Summary | Decisions | Bugs | Risk |
 |------|-----------|--------|---------|-----------|------|------|
 | 2026-05-05 | f90c9564 | pending | fix(auth): normalize PostgreSQL URL scheme for asyncpg dialect | Add _normalize_pgsql_url(); align with account backend pattern | NoSuchModuleError: postgres dialect not found — URL scheme mismatch | low |
+| 2026-05-05 | 8e591170 | pending | chore: remove unused test suite and pytest config | Remove 7 stale test files + pytest config from pyproject.toml | — | low |
