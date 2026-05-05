@@ -23,6 +23,11 @@
       <div class="login-form">
         <input type="password" id="key" placeholder="访问密钥" data-i18n-placeholder="login.webuiPlaceholder" class="input" style="height:32px;font-size:12px">
         <button onclick="login()" class="btn btn-primary w-full" style="font-size:12px" data-i18n="login.enter">进入</button>
+        <div id="ld-divider" class="login-divider" style="display:none"><span data-i18n="login.or">或</span></div>
+        <button id="ld-btn" onclick="linuxdoLogin()" class="btn btn-outline w-full linuxdo-btn" style="font-size:12px;display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10l-7 7z"/></svg>
+          <span data-i18n="login.linuxdoBtn">LinuxDo 登录</span>
+        </button>
       </div>
     </div>
   </div>
@@ -43,8 +48,35 @@
       } catch { showToast(t('common.connectionFailed'), 'error'); }
     }
 
+    const LINUXDO_ENABLED = {{LINUXDO_ENABLED}};
+
+    if (LINUXDO_ENABLED) {
+      document.getElementById('ld-divider').style.display = 'flex';
+      document.getElementById('ld-btn').style.display = 'inline-flex';
+    }
+
+    function linuxdoLogin() {
+      location.href = '/webui/auth/linuxdo';
+    }
+
+    async function handleOAuthToken() {
+      const p = new URLSearchParams(location.search);
+      const token = p.get('oauth_token');
+      if (!token) return false;
+      try {
+        if (await verifyKey(VERIFY, token)) {
+          await webuiKey.set(token);
+          window.history.replaceState(null, '', '/webui/login');
+          location.href = '/webui/chat';
+          return true;
+        }
+      } catch {}
+      return false;
+    }
+
     (async () => {
       try {
+        if (await handleOAuthToken()) return;
         const stored = await webuiKey.get();
         if (stored && await verifyKey(VERIFY, stored)) { location.href='/webui/chat'; return; }
         if (stored) webuiKey.clear();

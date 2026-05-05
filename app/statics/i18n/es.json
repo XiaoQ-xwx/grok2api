@@ -14,7 +14,9 @@
     "webuiSubtitle": "Introduzca la clave de acceso",
     "webuiPlaceholder": "Clave de acceso",
     "enter": "Entrar",
-    "goToAdmin": "Ir al Panel de Administración"
+    "goToAdmin": "Ir al Panel de Administración",
+    "or": "o",
+    "linuxdoBtn": "Iniciar sesión con LinuxDo"
   },
   "webui": {
     "header": {

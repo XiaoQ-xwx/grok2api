@@ -14,7 +14,9 @@
     "webuiSubtitle": "Enter access key",
     "webuiPlaceholder": "Access Key",
     "enter": "Enter",
-    "goToAdmin": "Go to Admin Panel"
+    "goToAdmin": "Go to Admin Panel",
+    "or": "or",
+    "linuxdoBtn": "Login with LinuxDo"
   },
   "header": {
     "account": "Account Management",

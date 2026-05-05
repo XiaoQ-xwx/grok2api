@@ -14,7 +14,9 @@
     "webuiSubtitle": "Saisissez la clé d’accès",
     "webuiPlaceholder": "Clé d’accès",
     "enter": "Entrer",
-    "goToAdmin": "Accéder au panneau d’administration"
+    "goToAdmin": "Accéder au panneau d'administration",
+    "or": "ou",
+    "linuxdoBtn": "Se connecter avec LinuxDo"
   },
   "webui": {
     "header": {

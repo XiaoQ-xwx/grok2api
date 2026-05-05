@@ -14,7 +14,9 @@
     "webuiSubtitle": "アクセスキーを入力してください",
     "webuiPlaceholder": "アクセスキー",
     "enter": "入る",
-    "goToAdmin": "管理パネルへ"
+    "goToAdmin": "管理パネルへ",
+    "or": "または",
+    "linuxdoBtn": "LinuxDo でログイン"
   },
   "webui": {
     "header": {

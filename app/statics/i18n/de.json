@@ -14,7 +14,9 @@
     "webuiSubtitle": "Geben Sie den Zugriffsschlüssel ein",
     "webuiPlaceholder": "Zugriffsschlüssel",
     "enter": "Öffnen",
-    "goToAdmin": "Zum Administrationsbereich"
+    "goToAdmin": "Zum Administrationsbereich",
+    "or": "oder",
+    "linuxdoBtn": "Mit LinuxDo anmelden"
   },
   "webui": {
     "header": {

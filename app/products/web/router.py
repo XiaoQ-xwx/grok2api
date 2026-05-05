@@ -1,10 +1,19 @@
 """Web product — unified pages + API for the statics-based frontend."""
 
 from pathlib import Path
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
+from app.platform.auth.linuxdo import (
+    exchange_code,
+    fetch_user,
+    get_authorize_url,
+    is_linuxdo_enabled,
+    issue_token,
+    verify_state,
+)
 from app.platform.auth.middleware import is_webui_enabled, verify_webui_key
 from app.platform.meta import get_project_version
 from app.platform.update_check import get_latest_release_info
@@ -35,6 +44,38 @@ def _serve_html(path: str):
 @router.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse("/admin")
+
+
+# --- LinuxDo OAuth ---
+
+@router.get("/webui/auth/linuxdo", include_in_schema=False)
+async def linuxdo_login(request: Request):
+    if not is_webui_enabled() or not is_linuxdo_enabled():
+        raise HTTPException(404, "Not Found")
+    redirect_uri = str(request.url_for("linuxdo_callback"))
+    auth_url, _ = get_authorize_url(redirect_uri)
+    return RedirectResponse(auth_url)
+
+
+@router.get("/webui/auth/linuxdo/callback", include_in_schema=False)
+async def linuxdo_callback(request: Request, code: str = Query(...), state: str = Query(...)):
+    if not is_webui_enabled() or not is_linuxdo_enabled():
+        raise HTTPException(404, "Not Found")
+    if not verify_state(state):
+        return HTMLResponse("<h3>OAuth 授权失败：state 校验不通过</h3>", status_code=400)
+
+    redirect_uri = str(request.url_for("linuxdo_callback"))
+    access_token = await exchange_code(code, redirect_uri)
+    if not access_token:
+        return HTMLResponse("<h3>OAuth 授权失败：无法获取 access_token</h3>", status_code=400)
+
+    user = await fetch_user(access_token)
+    if not user:
+        return HTMLResponse("<h3>OAuth 授权失败：无法获取用户信息</h3>", status_code=400)
+
+    token = issue_token(user)
+    qs = urlencode({"oauth_token": token})
+    return RedirectResponse(f"/webui/login?{qs}")
 
 
 # --- Admin pages ---
@@ -68,7 +109,9 @@ async def webui_root():
 async def webui_login():
     if not is_webui_enabled():
         raise HTTPException(404, "Not Found")
-    return _serve_html("webui/login.html")
+    return serve_static_html(_DIR / "webui/login.html", {
+        "{{LINUXDO_ENABLED}}": "true" if is_linuxdo_enabled() else "false",
+    })
 
 @router.get("/webui/api/verify", dependencies=[Depends(verify_webui_key)], tags=["WebUI - System"])
 async def webui_verify():

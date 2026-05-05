@@ -14,7 +14,9 @@
     "webuiSubtitle": "请输入访问密钥",
     "webuiPlaceholder": "访问密钥",
     "enter": "进入",
-    "goToAdmin": "进入管理后台"
+    "goToAdmin": "进入管理后台",
+    "or": "或",
+    "linuxdoBtn": "LinuxDo 登录"
   },
   "header": {
     "account": "账户管理",

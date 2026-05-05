@@ -102,20 +102,29 @@ async def verify_admin_key(
 async def verify_webui_key(
     authorization: str | None = Header(default=None),
 ) -> None:
-    """Validate Bearer token for webui endpoints."""
-    webui_key = get_webui_key()
+    """Validate Bearer token for webui endpoints.
 
-    if not webui_key:
-        if is_webui_enabled():
-            return
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "WebUI access is disabled.")
+    Accepts the configured ``webui_key``, or a LinuxDo OAuth session token
+    issued by ``app.platform.auth.linuxdo.issue_token``.
+    """
+    webui_key = get_webui_key()
 
     token = _extract_bearer(authorization)
     if token is None:
+        if not webui_key and is_webui_enabled():
+            return
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing authentication token.")
 
-    if not hmac.compare_digest(token, webui_key):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication token.")
+    # 1) Static webui_key
+    if webui_key and hmac.compare_digest(token, webui_key):
+        return
+
+    # 2) LinuxDo OAuth token
+    from app.platform.auth.linuxdo import verify_token
+    if verify_token(token):
+        return
+
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication token.")
 
 __all__ = [
     "verify_api_key",
