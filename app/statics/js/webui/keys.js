@@ -40,8 +40,12 @@
   }
 
   async function authHeaders() {
-    const key = await webuiKey?.get?.();
-    return key ? { Authorization: `Bearer ${key}` } : {};
+    try {
+      const key = await webuiKey.get();
+      return key ? { Authorization: `Bearer ${key}` } : {};
+    } catch {
+      return {};
+    }
   }
 
   function renderKeyList() {
@@ -78,10 +82,10 @@
     if (!confirm(text('keys.confirmDelete', 'Delete this API key? It will stop working immediately.'))) return;
     try {
       await deleteKey(id);
-      showToast?.(text('keys.deleted', 'Key deleted.'), 'success');
+      if (typeof showToast === 'function') showToast(text('keys.deleted', 'Key deleted.'), 'success');
       await fetchKeys();
     } catch {
-      showToast?.(text('keys.deleteError', 'Failed to delete key.'), 'error');
+      if (typeof showToast === 'function') showToast(text('keys.deleteError', 'Failed to delete key.'), 'error');
     }
   }
 
@@ -111,7 +115,8 @@
   }
 
   async function handleCreate() {
-    const name = document.getElementById('keyNameInput').value.trim() || 'Default';
+    const input = document.getElementById('keyNameInput');
+    const name = (input ? input.value.trim() : '') || 'Default';
     try {
       const result = await createKey(name);
       document.getElementById('keyCreateForm').style.display = 'none';
@@ -122,13 +127,13 @@
       const copyBtn = document.getElementById('copyRawKeyBtn');
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(result.raw_key).then(() => {
-          showToast?.(text('keys.copied', 'Key copied!'), 'success');
+          if (typeof showToast === 'function') showToast(text('keys.copied', 'Key copied!'), 'success');
         });
       };
 
       await fetchKeys();
     } catch (e) {
-      showToast?.(e.message, 'error');
+      if (typeof showToast === 'function') showToast(e.message, 'error');
     }
   }
 

@@ -33,19 +33,18 @@
 
       <section class="webui-sidebar-sessions">
         <div id="sessionList" class="webui-session-list"></div>
+        <div id="keysPanel" class="keys-panel keys-panel-sidebar" style="display:none">
+          <div class="keys-panel-header">
+            <span class="keys-panel-title" data-i18n="keys.title">API Keys</span>
+            <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
+          </div>
+          <div id="keyList" class="keys-list"></div>
+        </div>
       </section>
-
       <div id="userProfile" class="profile-area" style="display:none"></div>
     </aside>
 
     <section class="webui-workspace">
-      <div id="keysPanel" class="keys-panel" style="display:none">
-        <div class="keys-panel-header">
-          <span class="keys-panel-title" data-i18n="keys.title">API Keys</span>
-          <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
-        </div>
-        <div id="keyList" class="keys-list"></div>
-      </div>
       <section class="webui-chat-pane">
         <section class="webui-thread-shell">
           <main id="thread" class="webui-thread">
