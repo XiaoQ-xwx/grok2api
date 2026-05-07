@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="keys.pageTitle">Grok2API - API Keys</title>
+  <link rel="icon" href="/favicon.ico?v={{APP_VERSION}}">
+  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-mono/style.css" rel="stylesheet">
+  <link href="/static/css/app.css?v={{APP_VERSION}}" rel="stylesheet">
+</head>
+<body class="webui-page">
+  <div id="webui-header" data-active="/webui/keys"></div>
+
+  <main class="webui-main webui-keys-main">
+    <section class="webui-keys-shell">
+      <header class="webui-keys-head">
+        <h1 class="webui-keys-title" data-i18n="keys.title">API Keys</h1>
+        <button id="createKeyBtn" class="btn btn-primary" style="font-size:13px;height:32px" data-i18n="keys.create">Create Key</button>
+      </header>
+
+      <div id="keyList" class="keys-list keys-list-page"></div>
+    </section>
+  </main>
+
+  <div id="keyCreateModal" class="modal-overlay" aria-hidden="true" style="display:none">
+    <div class="modal">
+      <div id="keyCreateForm">
+        <div class="modal-title" data-i18n="keys.createTitle">Create API Key</div>
+        <div class="text-xs text-muted mt-2" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</div>
+        <input id="keyNameInput" class="input mt-2 w-full" type="text" placeholder="Key name" data-i18n-placeholder="keys.namePlaceholder">
+        <div class="modal-footer">
+          <button id="keyCreateCancel" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">取消</button>
+          <button id="keyCreateConfirm" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">确认</button>
+        </div>
+      </div>
+      <div id="keyCreateResult" style="display:none">
+        <div class="modal-title" data-i18n="keys.createdTitle">Key Created</div>
+        <div class="text-xs text-muted mt-2" data-i18n="keys.createdWarning">Copy this key now — it will not be shown again.</div>
+        <div class="key-raw-display mt-2">
+          <code id="rawKeyDisplay" class="key-mono"></code>
+          <button id="copyRawKeyBtn" class="btn btn-outline" style="font-size:11px;height:26px" data-i18n="keys.copy">Copy</button>
+        </div>
+        <div class="modal-footer">
+          <button id="keyCreateClose" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/webui-header.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/footer.js?v={{APP_VERSION}}"></script>
+  <script>
+    (() => {
+      const API_BASE = '/webui/api/me';
+      let keysCache = [];
+
+      function t(key, fallback) { return typeof window.t === 'function' ? window.t(key) : fallback; }
+      function esc(s) { const el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
+      function fmtDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString(); }
+      function toast(msg, type) { if (typeof showToast === 'function') showToast(msg, type); }
+
+      async function authHeaders() {
+        try {
+          const key = await webuiKey.get();
+          return key ? { Authorization: `Bearer ${key}` } : {};
+        } catch { return {}; }
+      }
+
+      async function fetchKeys() {
+        try {
+          const resp = await fetch(`${API_BASE}/keys`, { headers: await authHeaders() });
+          if (!resp.ok) throw new Error(resp.status);
+          keysCache = await resp.json();
+        } catch (e) { keysCache = []; }
+        renderKeyList();
+      }
+
+      async function createKey(name) {
+        const resp = await fetch(`${API_BASE}/keys`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+          body: JSON.stringify({ key_name: name || 'Default' }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || 'Failed to create key');
+        }
+        return resp.json();
+      }
+
+      async function deleteKey(id) {
+        const resp = await fetch(`${API_BASE}/keys/${id}`, {
+          method: 'DELETE',
+          headers: await authHeaders(),
+        });
+        if (!resp.ok) throw new Error('Failed to delete key');
+      }
+
+      function renderKeyList() {
+        const container = document.getElementById('keyList');
+        if (!container) return;
+        if (keysCache.length === 0) {
+          container.innerHTML = `<div class="keys-empty">${t('keys.noKeys', 'No API keys yet.')}</div>`;
+          return;
+        }
+        container.innerHTML = keysCache.map(k => `
+          <div class="key-row" data-id="${k.id}">
+            <div class="key-info">
+              <span class="key-mono">${esc(k.key_prefix)}…</span>
+              <span class="key-name">${esc(k.key_name)}</span>
+            </div>
+            <div class="key-meta">
+              <span class="key-date">${fmtDate(k.created_at)}</span>
+              ${k.is_banned ? '<span class="key-badge key-badge-banned">'+t('keys.banned','Banned')+'</span>' : ''}
+            </div>
+            <button class="key-delete" data-id="${k.id}" title="${t('keys.delete','Delete')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg>
+            </button>
+          </div>
+        `).join('');
+        container.querySelectorAll('.key-delete').forEach(btn => {
+          btn.addEventListener('click', () => handleDelete(btn.dataset.id));
+        });
+      }
+
+      async function handleDelete(id) {
+        if (!confirm(t('keys.confirmDelete', 'Delete this API key? It will stop working immediately.'))) return;
+        try {
+          await deleteKey(id);
+          toast(t('keys.deleted', 'Key deleted.'), 'success');
+          await fetchKeys();
+        } catch { toast(t('keys.deleteError', 'Failed to delete key.'), 'error'); }
+      }
+
+      function showModal() {
+        document.getElementById('keyNameInput').value = '';
+        document.getElementById('keyCreateForm').style.display = '';
+        document.getElementById('keyCreateResult').style.display = 'none';
+        document.getElementById('keyCreateModal').style.display = 'flex';
+      }
+
+      function hideModal() {
+        document.getElementById('keyCreateModal').style.display = 'none';
+      }
+
+      async function handleCreate() {
+        const input = document.getElementById('keyNameInput');
+        const name = (input ? input.value.trim() : '') || 'Default';
+        try {
+          const result = await createKey(name);
+          document.getElementById('keyCreateForm').style.display = 'none';
+          document.getElementById('keyCreateResult').style.display = '';
+          document.getElementById('rawKeyDisplay').textContent = result.raw_key;
+          document.getElementById('copyRawKeyBtn').onclick = () => {
+            navigator.clipboard.writeText(result.raw_key).then(() => toast(t('keys.copied', 'Key copied!'), 'success'));
+          };
+          await fetchKeys();
+        } catch (e) { toast(e.message, 'error'); }
+      }
+
+      function init() {
+        document.getElementById('createKeyBtn').addEventListener('click', showModal);
+        document.getElementById('keyCreateCancel').addEventListener('click', hideModal);
+        document.getElementById('keyCreateConfirm').addEventListener('click', handleCreate);
+        document.getElementById('keyCreateClose').addEventListener('click', hideModal);
+        document.getElementById('keyCreateModal').addEventListener('click', (e) => {
+          if (e.target === e.currentTarget) hideModal();
+        });
+        fetchKeys();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>

@@ -31,6 +31,7 @@
       <section class="webui-sidebar-sessions">
         <div id="sessionList" class="webui-session-list"></div>
       </section>
+
       <div id="userProfile" class="profile-area" style="display:none"></div>
     </aside>
 
@@ -81,41 +82,6 @@
     </div>
   </div>
 
-  <div id="keyCreateModal" class="modal-overlay" aria-hidden="true" style="display:none">
-    <div class="modal" style="width:420px;max-width:92vw">
-      <div id="keysListView">
-        <div class="keys-modal-header">
-          <span class="modal-title" data-i18n="keys.title">API Keys</span>
-          <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
-        </div>
-        <div id="keyList" class="keys-list keys-list-modal"></div>
-        <div class="modal-footer">
-          <button id="keysListClose" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">关闭</button>
-        </div>
-      </div>
-      <div id="keyCreateForm" style="display:none">
-        <div class="modal-title" data-i18n="keys.createTitle">Create API Key</div>
-        <div class="text-xs text-muted mt-2" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</div>
-        <input id="keyNameInput" class="input mt-2 w-full" type="text" placeholder="Key name" data-i18n-placeholder="keys.namePlaceholder">
-        <div class="modal-footer">
-          <button id="keyCreateCancel" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">取消</button>
-          <button id="keyCreateConfirm" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">确认</button>
-        </div>
-      </div>
-      <div id="keyCreateResult" style="display:none">
-        <div class="modal-title" data-i18n="keys.createdTitle">Key Created</div>
-        <div class="text-xs text-muted mt-2" data-i18n="keys.createdWarning">Copy this key now — it will not be shown again.</div>
-        <div class="key-raw-display mt-2">
-          <code id="rawKeyDisplay" class="key-mono"></code>
-          <button id="copyRawKeyBtn" class="btn btn-outline" style="font-size:11px;height:26px" data-i18n="keys.copy">Copy</button>
-        </div>
-        <div class="modal-footer">
-          <button id="keyCreateClose" type="button" class="btn btn-ghost" onclick="document.getElementById('keyCreateModal').style.display='none'" data-i18n="webui.chat.cancel">关闭</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
@@ -124,6 +90,5 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script src="/static/js/webui/chat.js?v={{APP_VERSION}}"></script>
-  <script src="/static/js/webui/keys.js?v={{APP_VERSION}}"></script>
 </body>
 </html>

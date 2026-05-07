@@ -1140,9 +1140,12 @@ textarea.input.webui-textarea{padding:8px 0 !important;resize:none !important}
 .profile-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profile-level{font-size:11px;color:var(--fg-muted)}
 
-/* Keys modal */
-.keys-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.keys-list-modal{max-height:320px}
+/* Keys page */
+.webui-keys-main{padding:0 0 20px;height:calc(100vh - 54px);overflow:hidden}
+.webui-keys-shell{max-width:680px;margin:0 auto;padding:28px 20px 0;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:16px}
+.webui-keys-head{display:flex;align-items:center;justify-content:space-between}
+.webui-keys-title{font-size:24px;font-weight:700;color:#191713;letter-spacing:-.03em}
+.keys-list-page{max-height:none;overflow:auto;align-content:start}
 .keys-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .keys-panel-title{font-size:13px;font-weight:600}
 .keys-list{display:grid;gap:6px;max-height:280px;overflow:auto}

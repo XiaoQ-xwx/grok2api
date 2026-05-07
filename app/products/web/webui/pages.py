@@ -45,4 +45,11 @@ async def webui_masonry_page():
     return _serve_html("masonry.html")
 
 
+@router.get("/webui/keys")
+async def webui_keys_page():
+    if not is_webui_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return _serve_html("keys.html")
+
+
 __all__ = ["router"]
