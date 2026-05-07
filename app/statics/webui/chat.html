@@ -22,9 +22,6 @@
           <button id="newChatBtn" class="webui-sidebar-toggle webui-sidebar-new-btn" type="button" data-i18n-aria-label="webui.chat.newChat" data-i18n-title="webui.chat.newChat">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </button>
-          <button id="keysToggleBtn" class="webui-sidebar-toggle" type="button" data-i18n-aria-label="keys.title" data-i18n-title="keys.title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777z"/><circle cx="11" cy="11" r="1"/></svg>
-          </button>
           <button id="sidebarToggleBtn" class="webui-sidebar-toggle" type="button" data-i18n-aria-label="webui.chat.toggleSidebar" data-i18n-title="webui.chat.toggleSidebar" aria-expanded="true">
             <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 5v14" stroke="currentColor" stroke-width="1.6"/></svg>
           </button>
@@ -33,13 +30,6 @@
 
       <section class="webui-sidebar-sessions">
         <div id="sessionList" class="webui-session-list"></div>
-        <div id="keysPanel" class="keys-panel keys-panel-sidebar" style="display:none">
-          <div class="keys-panel-header">
-            <span class="keys-panel-title" data-i18n="keys.title">API Keys</span>
-            <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
-          </div>
-          <div id="keyList" class="keys-list"></div>
-        </div>
       </section>
       <div id="userProfile" class="profile-area" style="display:none"></div>
     </aside>
@@ -92,8 +82,18 @@
   </div>
 
   <div id="keyCreateModal" class="modal-overlay" aria-hidden="true" style="display:none">
-    <div class="modal">
-      <div id="keyCreateForm">
+    <div class="modal" style="width:420px;max-width:92vw">
+      <div id="keysListView">
+        <div class="keys-modal-header">
+          <span class="modal-title" data-i18n="keys.title">API Keys</span>
+          <button id="createKeyBtn" class="btn btn-outline" style="font-size:11px;height:28px" data-i18n="keys.create">Create Key</button>
+        </div>
+        <div id="keyList" class="keys-list keys-list-modal"></div>
+        <div class="modal-footer">
+          <button id="keysListClose" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">关闭</button>
+        </div>
+      </div>
+      <div id="keyCreateForm" style="display:none">
         <div class="modal-title" data-i18n="keys.createTitle">Create API Key</div>
         <div class="text-xs text-muted mt-2" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</div>
         <input id="keyNameInput" class="input mt-2 w-full" type="text" placeholder="Key name" data-i18n-placeholder="keys.namePlaceholder">

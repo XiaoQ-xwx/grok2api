@@ -177,6 +177,7 @@ window.renderWebuiHeader = async function renderWebuiHeader() {
             <a href="/webui/chat" class="admin-nav-link" data-nav="/webui/chat" data-i18n="webui.header.chat">聊天</a>
             <a href="/webui/masonry" class="admin-nav-link" data-nav="/webui/masonry" data-i18n="webui.header.masonry">Masonry</a>
             <a href="/webui/chatkit" class="admin-nav-link" data-nav="/webui/chatkit" data-i18n="webui.header.chatkit">ChatKit</a>
+            <button type="button" class="admin-nav-link" id="hd-keys-btn" onclick="window.openKeysModal&&window.openKeysModal()" style="background:none;border:none;cursor:pointer;font:inherit" data-i18n="keys.title">API 密钥</button>
           </nav>
           <div class="admin-header-right">
             <div class="admin-lang-menu" id="hd-lang-menu">

@@ -435,14 +435,13 @@ button{cursor:pointer}
 .webui-chat-layout.sidebar-collapsed .webui-sidebar-new-btn,
 .webui-chat-layout.sidebar-collapsed .webui-sidebar-create,
 .webui-chat-layout.sidebar-collapsed .webui-sidebar-sessions,
-.webui-chat-layout.sidebar-collapsed .webui-sidebar-settings,
-.webui-chat-layout.sidebar-collapsed .keys-panel{display:none}
+.webui-chat-layout.sidebar-collapsed .webui-sidebar-settings{display:none}
 .webui-sidebar-create{
   height:42px;border-radius:12px;padding:0 14px;background:#ecebe7;color:#181816;
   display:flex;align-items:center;justify-content:flex-start;font-size:14px;font-weight:700
 }
 .webui-sidebar-create:hover{background:#e7e5e0}
-.webui-sidebar-sessions{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:6px;min-height:0}
+.webui-sidebar-sessions{display:grid;grid-template-rows:auto minmax(0,1fr);gap:6px;min-height:0}
 .webui-session-list{display:grid;gap:3px;align-content:start;overflow:auto;padding-right:4px}
 .webui-session-list:empty::before{
   content:attr(data-empty);padding:6px 12px;color:#a09d96;font-size:12px
@@ -1141,10 +1140,9 @@ textarea.input.webui-textarea{padding:8px 0 !important;resize:none !important}
 .profile-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profile-level{font-size:11px;color:var(--fg-muted)}
 
-/* Keys panel */
-.keys-panel{max-width:940px;margin:0 auto 0;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md)}
-.keys-panel-sidebar{max-width:none;margin:0;box-shadow:none;background:transparent;border:0;padding:6px 2px}
-.keys-panel-sidebar .keys-list{max-height:180px}
+/* Keys modal */
+.keys-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.keys-list-modal{max-height:320px}
 .keys-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .keys-panel-title{font-size:13px;font-weight:600}
 .keys-list{display:grid;gap:6px;max-height:280px;overflow:auto}

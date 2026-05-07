@@ -1,7 +1,6 @@
 (() => {
   const API_BASE = '/webui/api/me';
   let keysCache = [];
-  let panelVisible = false;
 
   function text(key, fallback) {
     return typeof t === 'function' ? t(key) : fallback;
@@ -101,16 +100,35 @@
     return el.innerHTML;
   }
 
-  function showCreateModal() {
-    const modal = document.getElementById('keyCreateModal');
-    if (!modal) return;
-    document.getElementById('keyNameInput').value = '';
+  function showListView() {
+    document.getElementById('keysListView').style.display = '';
+    document.getElementById('keyCreateForm').style.display = 'none';
     document.getElementById('keyCreateResult').style.display = 'none';
-    document.getElementById('keyCreateForm').style.display = '';
-    modal.style.display = 'flex';
   }
 
-  function hideCreateModal() {
+  function showCreateForm() {
+    document.getElementById('keysListView').style.display = 'none';
+    document.getElementById('keyCreateForm').style.display = '';
+    document.getElementById('keyCreateResult').style.display = 'none';
+    document.getElementById('keyNameInput').value = '';
+  }
+
+  function showResult(rawKey) {
+    document.getElementById('keysListView').style.display = 'none';
+    document.getElementById('keyCreateForm').style.display = 'none';
+    document.getElementById('keyCreateResult').style.display = '';
+    document.getElementById('rawKeyDisplay').textContent = rawKey;
+  }
+
+  async function openKeysModal() {
+    const modal = document.getElementById('keyCreateModal');
+    if (!modal) return;
+    showListView();
+    modal.style.display = 'flex';
+    await fetchKeys();
+  }
+
+  function closeKeysModal() {
     document.getElementById('keyCreateModal').style.display = 'none';
   }
 
@@ -119,89 +137,47 @@
     const name = (input ? input.value.trim() : '') || 'Default';
     try {
       const result = await createKey(name);
-      document.getElementById('keyCreateForm').style.display = 'none';
-      const resultDiv = document.getElementById('keyCreateResult');
-      resultDiv.style.display = '';
-      document.getElementById('rawKeyDisplay').textContent = result.raw_key;
-
-      const copyBtn = document.getElementById('copyRawKeyBtn');
-      copyBtn.onclick = () => {
+      document.getElementById('copyRawKeyBtn').onclick = () => {
         navigator.clipboard.writeText(result.raw_key).then(() => {
           if (typeof showToast === 'function') showToast(text('keys.copied', 'Key copied!'), 'success');
         });
       };
-
+      showResult(result.raw_key);
       await fetchKeys();
     } catch (e) {
       if (typeof showToast === 'function') showToast(e.message, 'error');
     }
   }
 
-  async function fetchProfile() {
-    try {
-      const resp = await fetch(`${API_BASE}/profile`, { headers: await authHeaders() });
-      if (!resp.ok) return;
-      const profile = await resp.json();
-      renderProfile(profile);
-    } catch {}
-  }
-
-  function renderProfile(p) {
-    const el = document.getElementById('userProfile');
-    if (!el) return;
-    const avatar = p.avatar_url
-      ? `<img class="profile-avatar" src="${esc(p.avatar_url)}" alt="" width="32" height="32">`
-      : `<div class="profile-avatar-pl">${esc((p.name || p.username || '?')[0].toUpperCase())}</div>`;
-
-    el.innerHTML = `
-      ${avatar}
-      <div class="profile-info">
-        <div class="profile-name">${esc(p.name || p.username)}</div>
-        <div class="profile-level">${p.trust_level ? `Level ${p.trust_level}` : ''}</div>
-      </div>
-    `;
-    el.style.display = 'flex';
-  }
-
-  function togglePanel() {
-    const panel = document.getElementById('keysPanel');
-    if (!panel) return;
-    panelVisible = !panelVisible;
-    panel.style.display = panelVisible ? 'block' : 'none';
-    if (panelVisible) fetchKeys();
-  }
-
   function init() {
-    const toggleBtn = document.getElementById('keysToggleBtn');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', togglePanel);
-    }
-
+    // Modal buttons (static elements)
     const createBtn = document.getElementById('createKeyBtn');
-    if (createBtn) {
-      createBtn.addEventListener('click', showCreateModal);
-    }
+    if (createBtn) createBtn.addEventListener('click', showCreateForm);
 
-    const cancelModal = document.getElementById('keyCreateCancel');
-    if (cancelModal) {
-      cancelModal.addEventListener('click', hideCreateModal);
-    }
+    const cancelBtn = document.getElementById('keyCreateCancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', showListView);
 
-    const confirmCreate = document.getElementById('keyCreateConfirm');
-    if (confirmCreate) {
-      confirmCreate.addEventListener('click', handleCreate);
-    }
+    const confirmBtn = document.getElementById('keyCreateConfirm');
+    if (confirmBtn) confirmBtn.addEventListener('click', handleCreate);
+
+    const closeBtn = document.getElementById('keysListClose');
+    if (closeBtn) closeBtn.addEventListener('click', closeKeysModal);
 
     const modalBg = document.getElementById('keyCreateModal');
     if (modalBg) {
       modalBg.addEventListener('click', (e) => {
-        if (e.target === modalBg) hideCreateModal();
+        if (e.target === modalBg) closeKeysModal();
       });
     }
 
-    fetchProfile();
+    // Result close → back to list
+    const resultClose = document.getElementById('keyCreateClose');
+    if (resultClose) {
+      resultClose.onclick = () => { showListView(); closeKeysModal(); };
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);
-  window.keysManager = { fetchKeys, createKey, deleteKey, fetchProfile };
+  window.openKeysModal = openKeysModal;
+  window.keysManager = { fetchKeys, createKey, deleteKey };
 })();
