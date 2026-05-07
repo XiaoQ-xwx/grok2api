@@ -702,10 +702,19 @@
     "cancelInProgress": "已暂停，请耐心等待本批次完成…",
     "na": "—"
   },
+  "profile": {
+    "loading": "加载中…",
+    "guest": "游客",
+    "trustLevel": "信任等级 {level}"
+  },
   "keys": {
     "title": "API 密钥",
+    "pageTitle": "Grok2API - API 密钥",
     "noKeys": "暂无 API 密钥",
+    "emptyTitle": "暂无 API 密钥",
+    "emptyDesc": "创建你的第一个 API 密钥以通过 API 访问 Grok。",
     "create": "创建密钥",
+    "createFirst": "创建第一个密钥",
     "createTitle": "创建 API 密钥",
     "createDesc": "为密钥命名以便记忆其用途。",
     "namePlaceholder": "密钥名称",
@@ -717,7 +726,11 @@
     "delete": "删除",
     "confirmDelete": "确定要删除此 API 密钥吗？删除后立即失效。",
     "deleted": "密钥已删除。",
-    "deleteError": "删除密钥失败。"
+    "deleteError": "删除密钥失败。",
+    "retry": "重试",
+    "loadError": "加载密钥失败。",
+    "backToChat": "返回聊天",
+    "noAccess": "请通过 LinuxDo 登录以管理 API 密钥。"
   },
   "admin": {
     "userManagement": "用户管理",

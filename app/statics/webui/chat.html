@@ -32,7 +32,7 @@
         <div id="sessionList" class="webui-session-list"></div>
       </section>
 
-      <div id="userProfile" class="profile-area" style="display:none"></div>
+      <div id="userProfile" class="profile-area"></div>
     </aside>
 
     <section class="webui-workspace">
@@ -89,6 +89,8 @@
   <script src="/static/js/footer.js?v={{APP_VERSION}}"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="/static/js/webui/profile.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/webui/chat.js?v={{APP_VERSION}}"></script>
+  <script>setTimeout(function(){if(window.renderWebuiProfile)renderWebuiProfile(document.getElementById('userProfile'))},0)</script>
 </body>
 </html>

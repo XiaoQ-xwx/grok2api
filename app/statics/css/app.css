@@ -1140,16 +1140,29 @@ textarea.input.webui-textarea{padding:8px 0 !important;resize:none !important}
 .profile-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profile-level{font-size:11px;color:var(--fg-muted)}
 
+/* Skeleton loading */
+.skeleton{background:linear-gradient(90deg,var(--bg) 25%,var(--border) 50%,var(--bg) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
 /* Keys page */
-.webui-keys-main{padding:0 0 20px;height:calc(100vh - 54px);overflow:hidden}
 .webui-keys-shell{max-width:680px;margin:0 auto;padding:28px 20px 0;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:16px}
 .webui-keys-head{display:flex;align-items:center;justify-content:space-between}
 .webui-keys-title{font-size:24px;font-weight:700;color:#191713;letter-spacing:-.03em}
-.keys-list-page{max-height:none;overflow:auto;align-content:start}
+.keys-list-page{display:grid;gap:6px;max-height:none;overflow:auto;align-content:start}
 .keys-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .keys-panel-title{font-size:13px;font-weight:600}
 .keys-list{display:grid;gap:6px;max-height:280px;overflow:auto}
 .keys-empty{font-size:12px;color:var(--fg-muted);text-align:center;padding:16px}
+.keys-empty-state{text-align:center;padding:40px 20px;color:var(--fg-muted)}
+.keys-empty-icon{width:48px;height:48px;margin:0 auto 12px;opacity:.4}
+.keys-empty-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--fg)}
+.keys-empty-desc{font-size:12px;color:var(--fg-subtle);margin-bottom:16px}
+.keys-sidebar{display:flex;flex-direction:column}
+.keys-sidebar-back{display:flex;align-items:center;gap:6px;padding:12px 14px 10px;font-size:13px;color:var(--fg-muted);border-radius:var(--radius);text-decoration:none}
+.keys-sidebar-back:hover{background:var(--border);color:var(--fg)}
+.keys-error{display:flex;align-items:center;gap:12px;padding:12px 16px;font-size:12px;color:var(--fg-muted);background:var(--bg);border-radius:var(--radius)}
+.keys-retry-btn{font-size:11px;height:26px;padding:0 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--fg);cursor:pointer}
+.keys-retry-btn:hover{background:var(--border)}
 .key-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);background:var(--bg)}
 .key-row:hover{background:var(--border)}
 .key-info{min-width:0;display:grid;gap:2px;flex:1}

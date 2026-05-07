@@ -235,4 +235,8 @@ window.renderWebuiHeader = async function renderWebuiHeader() {
   applyHeaderI18n();
   applyVersion();
   syncLanguageMenu?.();
+
+  if (typeof WebuiProfile !== 'undefined' && WebuiProfile.updateHeader) {
+    WebuiProfile.updateHeader(mount);
+  }
 };

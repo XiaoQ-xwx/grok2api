@@ -702,10 +702,19 @@
     "cancelInProgress": "Cancellation requested. Wait for the current batch to finish.",
     "na": "—"
   },
+  "profile": {
+    "loading": "Loading...",
+    "guest": "Guest",
+    "trustLevel": "Trust Level {level}"
+  },
   "keys": {
     "title": "API Keys",
+    "pageTitle": "Grok2API - API Keys",
     "noKeys": "No API keys yet.",
+    "emptyTitle": "No API Keys",
+    "emptyDesc": "Create your first API key to access the Grok API programmatically.",
     "create": "Create Key",
+    "createFirst": "Create First Key",
     "createTitle": "Create API Key",
     "createDesc": "Give your key a name to remember its purpose.",
     "namePlaceholder": "Key name",
@@ -717,7 +726,11 @@
     "delete": "Delete",
     "confirmDelete": "Delete this API key? It will stop working immediately.",
     "deleted": "Key deleted.",
-    "deleteError": "Failed to delete key."
+    "deleteError": "Failed to delete key.",
+    "retry": "Retry",
+    "loadError": "Failed to load keys.",
+    "backToChat": "Back to Chat",
+    "noAccess": "Login with LinuxDo to manage API keys."
   },
   "admin": {
     "userManagement": "User Management",
