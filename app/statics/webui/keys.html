@@ -97,6 +97,7 @@
       var API_BASE = '/webui/api/me';
       var keysCache = [];
       var _initialLoad = true;
+      var _key = '';
 
       function t(key, fallback) { return typeof window.t === 'function' ? window.t(key) : fallback; }
       function esc(s) { var el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
@@ -112,11 +113,14 @@
         });
       }
 
-      function authHeaders() {
+      function loadKey() {
         try {
-          var key = webuiKey.get();
-          return key ? { Authorization: 'Bearer ' + key } : {};
-        } catch (e) { return {}; }
+          return webuiKey.get().then(function (k) { _key = k || ''; });
+        } catch (e) { _key = ''; return Promise.resolve(); }
+      }
+
+      function authHeaders() {
+        return _key ? { Authorization: 'Bearer ' + _key } : {};
       }
 
       function fetchKeys() {
@@ -251,7 +255,7 @@
           if (btn && btn.dataset.id) handleDelete(btn.dataset.id);
         });
 
-        fetchKeys();
+        loadKey().then(fetchKeys);
       }
 
       document.addEventListener('DOMContentLoaded', init);
