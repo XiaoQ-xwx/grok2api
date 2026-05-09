@@ -1,5 +1,6 @@
 """Web product — unified pages + API for the statics-based frontend."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -62,6 +63,19 @@ async def linuxdo_login(request: Request):
 
 @router.get("/webui/auth/linuxdo/callback", include_in_schema=False)
 async def linuxdo_callback(request: Request, code: str = Query(...), state: str = Query(...)):
+    try:
+        return await _linuxdo_callback(request, code, state)
+    except Exception:
+        import logging
+        _log = logging.getLogger("grok2api")
+        _log.exception("linuxdo callback unhandled error")
+        return HTMLResponse(
+            "<h3>OAuth 登录失败：服务器内部错误，请稍后重试</h3>",
+            status_code=500,
+        )
+
+
+async def _linuxdo_callback(request: Request, code: str, state: str):
     if not is_webui_enabled() or not is_linuxdo_enabled():
         raise HTTPException(404, "Not Found")
     if not verify_state(state):
@@ -82,7 +96,7 @@ async def linuxdo_callback(request: Request, code: str = Query(...), state: str 
     if local_user:
         if not local_user.is_active:
             return HTMLResponse("<h3>账号已被停用</h3>", status_code=403)
-        if local_user.banned_until and local_user.banned_until > __import__("datetime").datetime.utcnow():
+        if local_user.banned_until and local_user.banned_until > datetime.utcnow():
             return HTMLResponse(
                 f"<h3>账号已被封禁至 {local_user.banned_until.strftime('%Y-%m-%d %H:%M:%S UTC')}</h3>",
                 status_code=403,

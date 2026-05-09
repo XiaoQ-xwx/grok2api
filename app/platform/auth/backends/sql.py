@@ -195,8 +195,9 @@ class SqlUserKeyRepository:
         async with self._engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
         # Schema migration: add banned_until and rpm_limit columns if missing
+        ts_type = "TIMESTAMP" if self._dialect == "postgresql" else "DATETIME"
         for col_sql in [
-            "ALTER TABLE users ADD COLUMN banned_until DATETIME NULL",
+            f"ALTER TABLE users ADD COLUMN banned_until {ts_type} NULL",
             "ALTER TABLE users ADD COLUMN rpm_limit INTEGER NULL",
         ]:
             try:

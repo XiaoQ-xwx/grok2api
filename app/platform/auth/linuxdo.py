@@ -115,8 +115,14 @@ def verify_token(token: str) -> LinuxDoUser | None:
         data = _b64decode(payload)
         if data is None:
             return None
-        if data.get("tv", 0) != get_token_version():
-            return None
+        token_tv = data.get("tv", 0)
+        current_tv = get_token_version()
+        if token_tv != current_tv:
+            # Allow legacy tokens that lack a tv field during the transition
+            # window (token_tv == 0, current_tv == 1).  Remove this grace
+            # period after the next token_version bump.
+            if not (token_tv == 0 and current_tv == 1):
+                return None
         return LinuxDoUser(
             id=data["uid"],
             username=data.get("un", data["name"]),
@@ -253,27 +259,37 @@ async def exchange_code(code: str, redirect_uri: str) -> str | None:
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(TOKEN_URL, data=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                return None
-            data = await resp.json()
-            return data.get("access_token")
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(TOKEN_URL, data=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    logger.warning("linuxdo token exchange failed: status={}", resp.status)
+                    return None
+                data = await resp.json()
+                return data.get("access_token")
+    except Exception:
+        logger.exception("linuxdo token exchange error")
+        return None
 
 
 async def fetch_user(access_token: str) -> LinuxDoUser | None:
     headers = {"Authorization": f"Bearer {access_token}"}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(USER_URL, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                return None
-            data = await resp.json()
-            # LinuxDo API may return trust_level under different keys
-            trust_level = data.get("trust_level") or data.get("trustLevel") or data.get("trust_level_manual")
-            return LinuxDoUser(
-                id=data.get("id", 0),
-                username=data.get("username", ""),
-                name=data.get("name"),
-                avatar_url=data.get("avatar_url"),
-                trust_level=int(trust_level) if trust_level is not None else None,
-            )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(USER_URL, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    logger.warning("linuxdo fetch user failed: status={}", resp.status)
+                    return None
+                data = await resp.json()
+                # LinuxDo API may return trust_level under different keys
+                trust_level = data.get("trust_level") or data.get("trustLevel") or data.get("trust_level_manual")
+                return LinuxDoUser(
+                    id=data.get("id", 0),
+                    username=data.get("username", ""),
+                    name=data.get("name"),
+                    avatar_url=data.get("avatar_url"),
+                    trust_level=int(trust_level) if trust_level is not None else None,
+                )
+    except Exception:
+        logger.exception("linuxdo fetch user error")
+        return None
