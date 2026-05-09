@@ -1057,6 +1057,16 @@ textarea.input.webui-textarea{padding:8px 0 !important;resize:none !important}
 .modal-overlay.open .modal{transform:none}
 .modal-title{font-size:15px;font-weight:600;margin-bottom:14px}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.modal-desc{font-size:12px;color:var(--fg-muted);margin-bottom:12px;line-height:1.5}
+.modal-desc-warn{color:var(--warning, #e67e22)}
+
+/* Keys modal */
+.keys-modal-overlay{z-index:400}
+.keys-modal{position:relative;padding:24px}
+.keys-modal-x{position:absolute;top:12px;right:12px;width:28px;height:28px;padding:0;border:none;background:none;color:var(--fg-subtle);cursor:pointer;border-radius:6px;display:grid;place-items:center;line-height:0}
+.keys-modal-x:hover{background:var(--border);color:var(--fg)}
+.keys-modal .input{margin-top:0}
+.keys-modal .key-raw-display{margin:12px 0}
 .admin-version-modal{
   width:min(560px,92vw);max-height:min(80vh,720px);
   display:grid;grid-template-rows:auto auto minmax(0,1fr) auto

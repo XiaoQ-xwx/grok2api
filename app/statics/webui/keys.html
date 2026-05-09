@@ -61,26 +61,32 @@
     </section>
   </main>
 
-  <div id="keyCreateModal" class="modal-overlay" aria-hidden="true" style="display:none">
-    <div class="modal">
+  <!-- Key Creation Modal -->
+  <div id="keyCreateModal" class="modal-overlay keys-modal-overlay" aria-hidden="true">
+    <div class="modal keys-modal">
+      <button class="keys-modal-x" id="modalCloseX" type="button" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
       <div id="keyCreateForm">
         <div class="modal-title" data-i18n="keys.createTitle">Create API Key</div>
-        <div class="text-xs text-muted mt-2" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</div>
-        <input id="keyNameInput" class="input mt-2 w-full" type="text" placeholder="Key name" data-i18n-placeholder="keys.namePlaceholder">
+        <p class="modal-desc" data-i18n="keys.createDesc">Give your key a name to remember its purpose.</p>
+        <input id="keyNameInput" class="input" type="text" placeholder="Key name (optional)" data-i18n-placeholder="keys.namePlaceholder" autocomplete="off" maxlength="64">
         <div class="modal-footer">
-          <button id="keyCreateCancel" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">取消</button>
-          <button id="keyCreateConfirm" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">确认</button>
+          <button id="keyCreateCancel" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">Cancel</button>
+          <button id="keyCreateConfirm" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">Create Key</button>
         </div>
       </div>
+
       <div id="keyCreateResult" style="display:none">
         <div class="modal-title" data-i18n="keys.createdTitle">Key Created</div>
-        <div class="text-xs text-muted mt-2" data-i18n="keys.createdWarning">Copy this key now — it will not be shown again.</div>
-        <div class="key-raw-display mt-2">
+        <p class="modal-desc modal-desc-warn" data-i18n="keys.createdWarning">Copy this key now — it will not be shown again.</p>
+        <div class="key-raw-display">
           <code id="rawKeyDisplay" class="key-mono"></code>
-          <button id="copyRawKeyBtn" class="btn btn-outline" style="font-size:11px;height:26px" data-i18n="keys.copy">Copy</button>
+          <button id="copyRawKeyBtn" class="btn btn-outline btn-sm" data-i18n="keys.copy">Copy</button>
         </div>
         <div class="modal-footer">
-          <button id="keyCreateClose" type="button" class="btn btn-ghost" data-i18n="webui.chat.cancel">关闭</button>
+          <button id="keyCreateClose" type="button" class="btn btn-primary" data-i18n="webui.chat.confirm">Done</button>
         </div>
       </div>
     </div>
@@ -212,20 +218,34 @@
         });
       }
 
-      function showModal() {
+      // Modal management — uses CSS .open class (opacity/pointer-events transition)
+      var _modalOpen = false;
+
+      function openModal() {
+        _modalOpen = true;
+        $('keyCreateModal').classList.add('open');
+        $('keyCreateModal').setAttribute('aria-hidden', 'false');
         $('keyNameInput').value = '';
         $('keyCreateForm').style.display = '';
         $('keyCreateResult').style.display = 'none';
-        $('keyCreateModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        // Auto-focus the input after transition
+        setTimeout(function () { $('keyNameInput').focus(); }, 150);
       }
 
-      function hideModal() {
-        $('keyCreateModal').style.display = 'none';
+      function closeModal() {
+        _modalOpen = false;
+        $('keyCreateModal').classList.remove('open');
+        $('keyCreateModal').setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
       }
 
       function handleCreate() {
         var input = $('keyNameInput');
         var name = (input ? input.value.trim() : '') || 'Default';
+        var confirmBtn = $('keyCreateConfirm');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Creating…';
         createKey(name).then(function (result) {
           $('keyCreateForm').style.display = 'none';
           $('keyCreateResult').style.display = '';
@@ -235,21 +255,51 @@
               toast(t('keys.copied', 'Key copied!'), 'success');
             });
           };
+          // Auto-copy to clipboard
+          navigator.clipboard.writeText(result.raw_key).catch(function () {});
           return fetchKeys();
-        }).catch(function (e) { toast(e.message, 'error'); });
+        }).catch(function (e) {
+          toast(e.message, 'error');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Create Key';
+        });
       }
 
       function init() {
-        $('createKeyBtn').addEventListener('click', showModal);
-        $('keyCreateCancel').addEventListener('click', hideModal);
-        $('keyCreateConfirm').addEventListener('click', handleCreate);
-        $('keyCreateClose').addEventListener('click', hideModal);
+        // Open modal
+        $('createKeyBtn').addEventListener('click', openModal);
+
+        // Close modal — X button, Cancel, overlay click
+        $('modalCloseX').addEventListener('click', closeModal);
+        $('keyCreateCancel').addEventListener('click', closeModal);
         $('keyCreateModal').addEventListener('click', function (e) {
-          if (e.target === e.currentTarget) hideModal();
+          if (e.target === e.currentTarget) closeModal();
         });
+
+        // Close after seeing result
+        $('keyCreateClose').addEventListener('click', closeModal);
+
+        // Keyboard: Escape to close
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && _modalOpen) closeModal();
+        });
+
+        // Keyboard: Enter to submit in the input
+        $('keyNameInput').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && _modalOpen) {
+            var confirmBtn = $('keyCreateConfirm');
+            if (!confirmBtn.disabled) handleCreate();
+          }
+        });
+
+        // Confirm button
+        $('keyCreateConfirm').addEventListener('click', handleCreate);
+
+        // Retry button
         var retryBtn = document.querySelector('.keys-retry-btn');
         if (retryBtn) retryBtn.addEventListener('click', fetchKeys);
 
+        // Delegated delete handler
         $('keyListContainer').addEventListener('click', function (e) {
           var btn = e.target.closest('.key-delete');
           if (btn && btn.dataset.id) handleDelete(btn.dataset.id);
