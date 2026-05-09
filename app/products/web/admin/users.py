@@ -1,10 +1,21 @@
 """Admin user management endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from datetime import datetime, timedelta
 
-from app.platform.auth.models import UserCreate, UserUpdate, UserWithKeyCount
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from pydantic import BaseModel
+
+from app.platform.auth.models import UserCreate, UserUpdate
 
 router = APIRouter(tags=["Admin - Users"])
+
+
+class BanRequest(BaseModel):
+    duration_seconds: int | None = None
+
+
+class RpmRequest(BaseModel):
+    rpm_limit: int | None = None
 
 
 def _get_repo(request: Request):
@@ -85,6 +96,44 @@ async def update_user(request: Request, user_id: str, body: UserUpdate):
     _repo_required(repo)
 
     user = await repo.update_user(user_id, body)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
+    return user.model_dump(mode="json")
+
+
+@router.post("/users/{user_id}/ban")
+async def ban_user(request: Request, user_id: str, body: BanRequest):
+    repo = _get_repo(request)
+    _repo_required(repo)
+
+    if body.duration_seconds and body.duration_seconds > 0:
+        banned_until = datetime.utcnow() + timedelta(seconds=body.duration_seconds)
+    else:
+        banned_until = datetime(2099, 1, 1)
+
+    user = await repo.ban_user(user_id, banned_until)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
+    return user.model_dump(mode="json")
+
+
+@router.post("/users/{user_id}/unban")
+async def unban_user(request: Request, user_id: str):
+    repo = _get_repo(request)
+    _repo_required(repo)
+
+    user = await repo.unban_user(user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
+    return user.model_dump(mode="json")
+
+
+@router.patch("/users/{user_id}/rpm")
+async def set_user_rpm(request: Request, user_id: str, body: RpmRequest):
+    repo = _get_repo(request)
+    _repo_required(repo)
+
+    user = await repo.set_user_rpm(user_id, body.rpm_limit)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
     return user.model_dump(mode="json")

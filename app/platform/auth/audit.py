@@ -54,7 +54,6 @@ class AuditMiddleware:
                 user_id=None,
                 key_id=None,
                 key_name=None,
-                rpm_limit=None,
                 is_global_key=True,
             )
 

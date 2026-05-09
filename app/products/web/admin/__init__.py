@@ -136,6 +136,14 @@ def _ensure_runtime_patch_allowed(payload: dict[str, Any]) -> None:
                 )
 
 
+def _get_nested(d: dict, keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        if not isinstance(d, dict):
+            return None
+        d = d.get(key, {})
+    return d if d != {} else None
+
+
 def _patch_touches_prefix(payload: dict[str, Any], prefix: str) -> bool:
     return any(
         path == prefix or path.startswith(f"{prefix}.")
@@ -199,14 +207,22 @@ async def get_config_endpoint():
 @router.post("/config", tags=[_TAG_ADMIN_SYSTEM])
 async def update_config(req: ConfigPatchRequest):
     from app.control.account.runtime import reconcile_refresh_runtime
+    from app.platform.auth.linuxdo import hash_access_password
 
     patch = _sanitize_proxy_config(req.root)
     _ensure_runtime_patch_allowed(patch)
+
+    # Hash LD access password if provided in plaintext
+    ld_password = _get_nested(patch, ("auth", "linuxdo", "access_password"))
+    if ld_password and isinstance(ld_password, str):
+        patch.setdefault("auth", {}).setdefault("linuxdo", {})["access_password_hash"] = hash_access_password(ld_password)
+        del patch["auth"]["linuxdo"]["access_password"]
+        # Auto-increment token_version to invalidate existing sessions
+        current_version = config.get_int("auth.linuxdo.token_version", 1)
+        patch.setdefault("auth", {}).setdefault("linuxdo", {})["token_version"] = current_version + 1
+
     cache_local_changed = _patch_touches_prefix(patch, "cache.local")
     await config.update(patch)
-    # config.update() only writes to the backend and invalidates the in-memory
-    # snapshot (_version = None); it does not refresh the data.  load() is
-    # required here so that get_str/get_int calls below return the new values.
     await config.load()
     reload_file_logging(
         file_level=config.get_str("logging.file_level", "") or None,

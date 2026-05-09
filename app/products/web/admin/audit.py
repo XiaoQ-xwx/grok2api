@@ -21,6 +21,7 @@ async def query_audit_logs(
     endpoint: str | None = Query(None),
     model: str | None = Query(None),
     status_code: int | None = Query(None),
+    ip_address: str | None = Query(None),
     time_from: str | None = Query(None),
     time_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -36,6 +37,7 @@ async def query_audit_logs(
         endpoint=endpoint,
         model=model,
         status_code=status_code,
+        ip_address=ip_address,
         page=page,
         page_size=page_size,
     )

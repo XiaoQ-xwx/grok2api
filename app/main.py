@@ -170,6 +170,28 @@ async def lifespan(app: FastAPI):
     await user_key_repo.initialize()
     app.state.user_key_repo = user_key_repo
 
+    # 2b2. Initialize rate limiter (Redis-based sliding window).
+    from app.platform.auth.rate_limit import RedisSlidingWindowLimiter
+
+    _rate_limiter_redis = None
+    _rpm_backend = _config.get_str("auth.key_backend", "") or _config.get_str("auth.key_backend", "")
+    try:
+        from app.platform.auth.backends.factory import _get_redis_client
+        # Reuse the account redis if available, else create new
+        if hasattr(user_key_repo, "_r"):
+            _rate_limiter_redis = user_key_repo._r
+    except Exception:
+        pass
+    if _rate_limiter_redis is None:
+        try:
+            from redis.asyncio import Redis
+            _redis_url = _config.get_str("account.redis", "") or _config.get_str("auth.key_redis", "")
+            if _redis_url:
+                _rate_limiter_redis = Redis.from_url(_redis_url)
+        except Exception:
+            pass
+    app.state.rate_limiter = RedisSlidingWindowLimiter(_rate_limiter_redis) if _rate_limiter_redis else None
+
     # 2c. Audit log retention cleanup (runs on startup and periodically).
     async def _audit_cleanup_loop() -> None:
         retention_days = _config.get_int("audit.retention_days", 30) or 30

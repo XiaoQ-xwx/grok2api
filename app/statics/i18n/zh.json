@@ -354,6 +354,7 @@
         "retry": "重试策略",
         "timeouts": "请求超时设置",
         "imageProtocol": "NSFW 与图像协议",
+        "ldAccess": "LD 访问控制",
         "logging": "日志配置",
         "localMediaCache": "本地媒体缓存"
       },
@@ -624,6 +625,14 @@
           "label": "文件日志等级",
           "desc": "日志文件写入的最低等级，可独立于控制台配置。默认 INFO。"
         },
+        "ldPasswordEnabled": {
+          "label": "启用 LD 访问密码",
+          "desc": "开启后 LD OAuth 用户需额外输入访问密码完成二次验证。"
+        },
+        "ldPassword": {
+          "label": "LD 访问密码",
+          "desc": "修改密码将使所有 LD 用户重新登录。"
+        },
         "logMaxFiles": {
           "label": "日志保留天数",
           "desc": "按天轮转时最多保留的日志文件数量。默认 7。"
@@ -742,6 +751,8 @@
       "name": "名称",
       "provider": "来源",
       "active": "活跃",
+      "banStatus": "封禁",
+      "rpm": "RPM",
       "keys": "密钥数",
       "created": "创建时间",
       "lastLogin": "最后登录",
@@ -761,6 +772,7 @@
       "title": "审计日志",
       "filterUser": "按用户筛选",
       "filterEndpoint": "按端点筛选",
+      "filterIp": "请求 IP",
       "filterModel": "按模型筛选",
       "timeFrom": "开始时间",
       "timeTo": "结束时间",

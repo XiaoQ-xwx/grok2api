@@ -333,6 +333,77 @@
       }
       .save-bar-actions { justify-content:flex-end }
     }
+
+    /* User Manage Modal */
+    .um-overlay {
+      display:none;
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,.45);
+      align-items:center; justify-content:center;
+    }
+    .um-overlay.active { display:flex }
+    .um-modal {
+      background:#fff;
+      border-radius:14px;
+      width:min(calc(100% - 32px), 540px);
+      max-height:85vh;
+      overflow-y:auto;
+      box-shadow:0 20px 60px rgba(0,0,0,.15);
+    }
+    .um-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; border-bottom:1px solid #f0f0f0;
+    }
+    .um-title { font-size:16px; font-weight:700 }
+    .um-close {
+      width:28px; height:28px; border-radius:50%;
+      border:1px solid #e6e6e6; background:#fafafa;
+      font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      color:#888; transition:background .15s;
+    }
+    .um-close:hover { background:#f3f3f3; color:#222 }
+    .um-body { padding:16px 20px 20px }
+    .um-section {
+      background:#fafafa; border:1px solid #f0f0f0; border-radius:10px;
+      padding:14px 16px; margin-bottom:12px;
+    }
+    .um-section:last-child { margin-bottom:0 }
+    .um-section-title {
+      font-size:11px; font-weight:700; color:#8d8d8d;
+      text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;
+    }
+    .um-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+    .um-info-item { display:flex; flex-direction:column; gap:2px }
+    .um-info-label { font-size:11px; color:var(--fg-muted); font-weight:500 }
+
+    /* Admin panel extras */
+    .admin-global-rpm {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 16px; margin-bottom:12px;
+      background:#fff; border:1px solid #f0f0f0; border-radius:10px;
+    }
+    .admin-global-rpm label { font-size:13px; font-weight:600 }
+    .btn-xs {
+      height:24px; padding:0 8px; font-size:11px; border-radius:6px;
+      cursor:pointer; border:1px solid #e6e6e6; background:#fafafa; color:#555;
+    }
+    .btn-xs:hover { background:#f3f3f3 }
+    .admin-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px }
+    .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600 }
+    .badge-basic { background:#f5f5f5; color:#888 }
+    .badge-premium { background:#fef3c7; color:#b45309 }
+    .badge-active { background:#dcfce7; color:#166534 }
+    .badge-expired { background:#fee2e2; color:#991b1b }
+    .table-card {
+      background:#fff; border:1px solid #f0f0f0; border-radius:10px; overflow-x:auto;
+    }
+    .table-card table { width:100%; border-collapse:collapse; font-size:13px }
+    .table-card th, .table-card td { text-align:left; padding:10px 12px; white-space:nowrap }
+    .table-card thead tr { border-bottom:1px solid #f0f0f0 }
+    .table-card th { font-size:11px; font-weight:700; color:#8d8d8d; text-transform:uppercase }
+    .table-card tbody tr { border-bottom:1px solid #fafafa }
+    .table-card tbody tr:hover { background:#fcfcfc }
+    .empty-state { text-align:center; padding:40px; color:var(--fg-muted); font-size:13px }
   </style>
 </head>
 <body>
@@ -400,6 +471,14 @@ const SCHEMA_DEF = [
           { key: 'api_key', label: 'API 调用密钥', labelKey: 'config.schema.fields.apiKey.label', type: 'text', desc: 'OpenAI 兼容 API 的鉴权密钥。多个值请使用英文逗号分隔；留空则禁用鉴权。', descKey: 'config.schema.fields.apiKey.desc', rand: true },
           { key: 'webui_enabled', label: '启用 WebUI', labelKey: 'config.schema.fields.webuiEnabled.label', type: 'bool', desc: '开放 WebUI 功能入口。关闭后相关路由将返回 404。', descKey: 'config.schema.fields.webuiEnabled.desc' },
           { key: 'webui_key', label: 'WebUI 访问密码', labelKey: 'config.schema.fields.webuiKey.label', type: 'password', desc: 'WebUI 的访问鉴权密码。配置后访问时必须提供。', descKey: 'config.schema.fields.webuiKey.desc', rand: true, showIf: 'app.webui_enabled' },
+        ]
+      },
+      {
+        title: 'LD 访问控制', titleKey: 'config.schema.groups.ldAccess',
+        section: 'auth.linuxdo',
+        fields: [
+          { key: 'access_password_enabled', label: '启用 LD 访问密码', labelKey: 'config.schema.fields.ldPasswordEnabled.label', type: 'bool', desc: '开启后 LD OAuth 用户需额外输入访问密码完成二次验证。', descKey: 'config.schema.fields.ldPasswordEnabled.desc' },
+          { key: 'access_password', label: 'LD 访问密码', labelKey: 'config.schema.fields.ldPassword.label', type: 'password', desc: '修改密码将使所有 LD 用户重新登录。', descKey: 'config.schema.fields.ldPassword.desc', rand: true, showIf: 'auth.linuxdo.access_password_enabled' },
         ]
       },
       {
@@ -1435,6 +1514,239 @@ function escHtml(s) {
   return el.innerHTML;
 }
 
+// ── User Manage Modal ──────────────────────────────────────────────────────
+const UserManageModal = {
+  _userId: null,
+  _user: null,
+
+  open(user, keyCount) {
+    this._userId = user.id;
+    this._user = user;
+    this._render(user, keyCount);
+    document.getElementById('userManageOverlay').classList.add('active');
+  },
+
+  close() {
+    document.getElementById('userManageOverlay').classList.remove('active');
+    this._userId = null;
+    this._user = null;
+  },
+
+  _render(u, kc) {
+    const banned = u.banned_until ? new Date(u.banned_until) > new Date() : false;
+    const banHtml = banned
+      ? `<span style="color:var(--danger)">已封禁至 ${new Date(u.banned_until).toLocaleString()}</span>`
+      : '<span style="color:var(--fg-muted)">未封禁</span>';
+
+    document.getElementById('umInfo').innerHTML = `
+      <div class="um-info-grid">
+        <div class="um-info-item"><span class="um-info-label">LD 等级</span><span>${u.trust_level ?? '-'}</span></div>
+        <div class="um-info-item"><span class="um-info-label">用户名</span><span>${escHtml(u.username)}</span></div>
+        <div class="um-info-item"><span class="um-info-label">昵称</span><span>${escHtml(u.name || '-')}</span></div>
+        <div class="um-info-item"><span class="um-info-label">用户 ID</span><span style="font-size:11px;font-family:mono">${escHtml(u.id)}</span></div>
+        <div class="um-info-item"><span class="um-info-label">来源</span><span>${escHtml(u.provider)}</span></div>
+        <div class="um-info-item"><span class="um-info-label">密钥数量</span><span>${kc}</span></div>
+        <div class="um-info-item"><span class="um-info-label">注册时间</span><span>${u.created_at ? new Date(u.created_at).toLocaleString() : '-'}</span></div>
+        <div class="um-info-item"><span class="um-info-label">最近登录</span><span>${u.last_login_at ? new Date(u.last_login_at).toLocaleString() : '-'}</span></div>
+        <div class="um-info-item"><span class="um-info-label">封禁状态</span>${banHtml}</div>
+        <div class="um-info-item"><span class="um-info-label">专属 RPM</span><span>${u.rpm_limit != null ? u.rpm_limit : '未设置（使用全局）'}</span></div>
+      </div>`;
+
+    document.getElementById('umBanDuration').value = '86400';
+    document.getElementById('umRpmValue').value = u.rpm_limit != null ? u.rpm_limit : '';
+  },
+
+  async doBan() {
+    const dur = document.getElementById('umBanDuration').value;
+    const duration = dur === 'perm' ? null : parseInt(dur);
+    try {
+      const r = await fetch(ADMIN_API + '/users/' + this._userId + '/ban', {
+        method: 'POST',
+        headers: { ...await authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration_seconds: duration }),
+      });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || r.status); }
+      showToast('封禁成功');
+      this.close();
+      populateUsersTable();
+    } catch (e) { showToast('封禁失败: ' + e.message, 'error'); }
+  },
+
+  async doUnban() {
+    try {
+      const r = await fetch(ADMIN_API + '/users/' + this._userId + '/unban', {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || r.status); }
+      showToast('解封成功');
+      this.close();
+      populateUsersTable();
+    } catch (e) { showToast('解封失败: ' + e.message, 'error'); }
+  },
+
+  async doSetRpm() {
+    const v = document.getElementById('umRpmValue').value.trim();
+    const rpm = v === '' ? null : parseInt(v);
+    if (v !== '' && (isNaN(rpm) || rpm < 0)) { showToast('请输入有效的 RPM 值', 'error'); return; }
+    try {
+      const r = await fetch(ADMIN_API + '/users/' + this._userId + '/rpm', {
+        method: 'PATCH',
+        headers: { ...await authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rpm_limit: rpm }),
+      });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || r.status); }
+      showToast('RPM 设置成功');
+      this.close();
+      populateUsersTable();
+    } catch (e) { showToast('RPM 设置失败: ' + e.message, 'error'); }
+  },
+};
+
+// ── User panel ────────────────────────────────────────────────────────────
+
+function renderUsersPanel() {
+  const panel = document.getElementById('panel-users');
+  if (!panel || panel.querySelector('.admin-panel')) return;
+  panel.innerHTML = `<div class="admin-panel">
+    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.users.title">用户管理</span></div>
+    <div class="admin-panel-body">
+      <div class="admin-global-rpm">
+        <label>全局 RPM 限制</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="globalRpmInput" class="input" type="number" min="0" placeholder="0 = 无限制" style="max-width:160px">
+          <button class="btn btn-sm btn-primary" onclick="saveGlobalRpm()">保存</button>
+        </div>
+      </div>
+      <div id="usersTable" class="table-card"><div class="empty-state">加载中…</div></div>
+    </div>
+  </div>`;
+  loadGlobalRpm();
+  populateUsersTable();
+}
+
+async function loadGlobalRpm() {
+  try {
+    const cfg = await _api('GET', '/config');
+    const rpm = cfg?.rate_limit?.global_rpm;
+    const inp = document.getElementById('globalRpmInput');
+    if (inp) inp.value = rpm != null ? rpm : '';
+  } catch {}
+}
+
+async function saveGlobalRpm() {
+  const inp = document.getElementById('globalRpmInput');
+  const v = inp.value.trim();
+  const rpm = v === '' ? 0 : parseInt(v);
+  if (isNaN(rpm) || rpm < 0) { showToast('请输入有效数值', 'error'); return; }
+  try {
+    await _api('POST', '/config', { rate_limit: { global_rpm: rpm } });
+    showToast('全局 RPM 已更新');
+  } catch (e) { showToast('保存失败: ' + e.message, 'error'); }
+}
+
+async function populateUsersTable() {
+  const data = await loadUsers();
+  const container = document.getElementById('usersTable');
+  if (!container) return;
+  if (!data.items.length) {
+    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
+    return;
+  }
+  const rows = data.items.map(item => {
+    const u = item.user;
+    const banned = u.banned_until && new Date(u.banned_until) > new Date();
+    return `<tr>
+      <td>${escHtml(u.username)}</td>
+      <td>${escHtml(u.name || '-')}</td>
+      <td><span class="badge ${u.provider === 'linuxdo' ? 'badge-premium' : 'badge-basic'}">${escHtml(u.provider)}</span></td>
+      <td>${u.is_active ? '<span class="badge badge-active">活跃</span>' : '<span class="badge badge-expired">停用</span>'}</td>
+      <td>${banned ? '<span class="badge badge-expired">已封禁</span>' : '<span class="badge badge-active">正常</span>'}</td>
+      <td>${u.rpm_limit != null ? u.rpm_limit : '-'}</td>
+      <td>${item.key_count}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+      <td><button class="btn btn-xs btn-outline" onclick="UserManageModal._loadAndOpen('${escHtml(u.id)}')">管理</button></td>
+    </tr>`;
+  }).join('');
+  container.innerHTML = `<table><thead><tr>
+    <th data-i18n="admin.users.username">用户名</th>
+    <th data-i18n="admin.users.name">名称</th>
+    <th data-i18n="admin.users.provider">来源</th>
+    <th data-i18n="admin.users.active">活跃</th>
+    <th data-i18n="admin.users.banStatus">封禁</th>
+    <th data-i18n="admin.users.rpm">RPM</th>
+    <th data-i18n="admin.users.keys">密钥数</th>
+    <th data-i18n="admin.users.created">创建时间</th>
+    <th data-i18n="admin.users.actions">操作</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+UserManageModal._loadAndOpen = async function(uid) {
+  try {
+    const r = await fetch(ADMIN_API + '/users/' + uid, { headers: await authHeaders() });
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    this.open(data.user, data.key_count);
+  } catch (e) { showToast('加载用户信息失败', 'error'); }
+};
+
+// ── Audit panel ───────────────────────────────────────────────────────────
+
+async function loadAuditLogs(params = '') {
+  try {
+    const resp = await fetch(ADMIN_API + '/audit-logs?page_size=50' + params, { headers: await authHeaders() });
+    if (!resp.ok) throw new Error(resp.status);
+    return await resp.json();
+  } catch { return { items: [], total: 0 }; }
+}
+
+function renderAuditPanel() {
+  const panel = document.getElementById('panel-audit');
+  if (!panel || panel.querySelector('.admin-panel')) return;
+  panel.innerHTML = `<div class="admin-panel">
+    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.audit.title">审计日志</span></div>
+    <div class="admin-panel-body">
+      <div class="admin-filter-bar">
+        <input id="auditFilterUser" class="input" placeholder="用户 ID" data-i18n-placeholder="admin.audit.filterUser" style="max-width:180px">
+        <input id="auditFilterEndpoint" class="input" placeholder="端点" data-i18n-placeholder="admin.audit.filterEndpoint" style="max-width:140px">
+        <input id="auditFilterIp" class="input" placeholder="请求 IP" data-i18n-placeholder="admin.audit.filterIp" style="max-width:160px">
+        <button class="btn btn-sm btn-outline" onclick="populateAuditTable()">筛选</button>
+      </div>
+      <div id="auditTable" class="table-card"><div class="empty-state">加载中…</div></div>
+    </div>
+  </div>`;
+  populateAuditTable();
+}
+
+async function populateAuditTable() {
+  let params = '';
+  const uid = document.getElementById('auditFilterUser')?.value.trim();
+  const ep = document.getElementById('auditFilterEndpoint')?.value.trim();
+  const ip = document.getElementById('auditFilterIp')?.value.trim();
+  if (uid) params += '&user_id=' + encodeURIComponent(uid);
+  if (ep) params += '&endpoint=' + encodeURIComponent(ep);
+  if (ip) params += '&ip_address=' + encodeURIComponent(ip);
+  const data = await loadAuditLogs(params);
+  const container = document.getElementById('auditTable');
+  if (!container) return;
+  if (!data.items.length) {
+    container.innerHTML = `<div class="empty-state">暂无审计日志</div>`;
+    return;
+  }
+  const rows = data.items.map(e => `<tr>
+    <td style="font-size:11px">${new Date(e.timestamp).toLocaleString()}</td>
+    <td>${escHtml(e.user_id || '-')}</td>
+    <td style="font-size:11px;font-family:mono">${escHtml(e.ip_address || '-')}</td>
+    <td>${escHtml(e.endpoint)}</td>
+    <td>${escHtml(e.model || '-')}</td>
+    <td>${e.status_code}</td>
+    <td><span class="badge ${e.auth_type === 'user_key' ? 'badge-premium' : 'badge-basic'}">${e.auth_type === 'user_key' ? '用户密钥' : '全局密钥'}</span></td>
+  </tr>`).join('');
+  container.innerHTML = `<table><thead><tr>
+    <th>时间</th><th>用户</th><th>请求 IP</th><th>端点</th><th>模型</th><th>状态码</th><th>认证类型</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────
 (async () => {
   try {
@@ -1458,5 +1770,44 @@ function escHtml(s) {
   }
 })();
 </script>
+
+<!-- User Manage Modal -->
+<div id="userManageOverlay" class="um-overlay" onclick="if(event.target===this)UserManageModal.close()">
+  <div class="um-modal">
+    <div class="um-header">
+      <span class="um-title">用户管理</span>
+      <button class="um-close" onclick="UserManageModal.close()">&times;</button>
+    </div>
+    <div class="um-body">
+      <div class="um-section">
+        <div class="um-section-title">用户信息</div>
+        <div id="umInfo"></div>
+      </div>
+      <div class="um-section">
+        <div class="um-section-title">封禁操作</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="umBanDuration" class="input" style="max-width:140px">
+            <option value="3600">1 小时</option>
+            <option value="21600">6 小时</option>
+            <option value="86400">24 小时</option>
+            <option value="604800">7 天</option>
+            <option value="perm">永久</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="UserManageModal.doBan()">封禁</button>
+          <button class="btn btn-sm btn-outline" onclick="UserManageModal.doUnban()">解封</button>
+        </div>
+      </div>
+      <div class="um-section">
+        <div class="um-section-title">RPM 限制</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="umRpmValue" class="input" type="number" min="0" placeholder="留空使用全局" style="max-width:160px">
+          <button class="btn btn-sm btn-primary" onclick="UserManageModal.doSetRpm()">设置</button>
+          <button class="btn btn-sm btn-outline" onclick="document.getElementById('umRpmValue').value='';UserManageModal.doSetRpm()">清除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

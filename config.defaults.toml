@@ -18,7 +18,18 @@ webui_key = ""
 client_id = "fwcUCLekUW7DWBQDhXkft7xjj05a6oWt"
 # LinuxDo Connect OAuth 2.0 客户端密钥
 client_secret = "FP18X154Z20HbLLYoH1WWTeE6c8htuty"
+# 启用 LD 登录二次访问密码
+access_password_enabled = false
+# 访问密码 bcrypt 哈希
+access_password_hash = ""
+# Token 版本号（密码变更时递增，强制旧 session 失效）
+token_version = 1
 
+
+# ==================== 限速配置 ====================
+[rate_limit]
+# 全局 RPM 限制（0 = 无限制，用户专属 RPM 优先于此值）
+global_rpm = 0
 
 # ==================== 用户管理 ====================
 [user]

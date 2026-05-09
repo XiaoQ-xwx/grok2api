@@ -11,6 +11,7 @@ from typing import NamedTuple
 from urllib.parse import urlencode
 
 import aiohttp
+import bcrypt
 
 from app.platform.auth.middleware import get_admin_key
 from app.platform.config.snapshot import get_config
@@ -20,6 +21,8 @@ AUTHORIZE_URL = "https://connect.linux.do/oauth2/authorize"
 TOKEN_URL = "https://connect.linux.do/oauth2/token"
 USER_URL = "https://connect.linux.do/api/user"
 TOKEN_PREFIX = "ld:"
+PENDING_PREFIX = "ld_pending:"
+PENDING_TTL = 300
 
 
 class LinuxDoUser(NamedTuple):
@@ -96,6 +99,7 @@ def issue_token(user: LinuxDoUser) -> str:
         "av": user.avatar_url or "",
         "tl": user.trust_level or 0,
         "iat": int(time.time()),
+        "tv": get_token_version(),
     })
     return f"{TOKEN_PREFIX}{payload}.{_sign(payload)}"
 
@@ -111,6 +115,8 @@ def verify_token(token: str) -> LinuxDoUser | None:
         data = _b64decode(payload)
         if data is None:
             return None
+        if data.get("tv", 0) != get_token_version():
+            return None
         return LinuxDoUser(
             id=data["uid"],
             username=data.get("un", data["name"]),
@@ -118,6 +124,65 @@ def verify_token(token: str) -> LinuxDoUser | None:
             avatar_url=data.get("av"),
             trust_level=data.get("tl"),
         )
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# LD access password (bcrypt)
+# ---------------------------------------------------------------------------
+
+def hash_access_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_access_password(password: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+    except Exception:
+        return False
+
+
+def is_access_password_enabled() -> bool:
+    return bool(get_config("auth.linuxdo.access_password_enabled", False))
+
+
+def get_token_version() -> int:
+    return int(get_config("auth.linuxdo.token_version", 1) or 1)
+
+
+# ---------------------------------------------------------------------------
+# Pending token — short-lived HMAC-signed token for password verification
+# ---------------------------------------------------------------------------
+
+def issue_pending_token(user_id: str, nonce: str | None = None) -> str:
+    nonce = nonce or secrets.token_hex(16)
+    payload = _b64encode({
+        "uid": user_id,
+        "nonce": nonce,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + PENDING_TTL,
+        "purpose": "ld_password_pending",
+    })
+    return f"{PENDING_PREFIX}{payload}.{_sign(payload)}"
+
+
+def verify_pending_token(token: str) -> dict | None:
+    if not token.startswith(PENDING_PREFIX):
+        return None
+    token = token[len(PENDING_PREFIX):]
+    try:
+        payload, sig = token.rsplit(".", 1)
+        if not _verify_sig(payload, sig):
+            return None
+        data = _b64decode(payload)
+        if data is None:
+            return None
+        if data.get("purpose") != "ld_password_pending":
+            return None
+        if data.get("exp", 0) < time.time():
+            return None
+        return data
     except Exception:
         return None
 

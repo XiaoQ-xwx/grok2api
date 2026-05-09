@@ -80,7 +80,6 @@ async def update_key(request: Request, key_id: str, body: KeyUpdate):
     key_record = await repo.update_key(
         key_id,
         key_name=body.key_name,
-        rpm_limit=body.rpm_limit,
     )
     if not key_record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Key not found.")

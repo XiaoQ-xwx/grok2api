@@ -354,6 +354,7 @@
         "retry": "Retry Policy",
         "timeouts": "Request Timeouts",
         "imageProtocol": "NSFW and Image Streaming",
+        "ldAccess": "LD Access Control",
         "logging": "Logging",
         "localMediaCache": "Local Media Cache"
       },
@@ -624,6 +625,14 @@
           "label": "File Log Level",
           "desc": "Minimum log level written to log files. Can be configured independently from the console. Default: INFO."
         },
+        "ldPasswordEnabled": {
+          "label": "Enable LD Access Password",
+          "desc": "Require LD OAuth users to enter an additional access password after OAuth login."
+        },
+        "ldPassword": {
+          "label": "LD Access Password",
+          "desc": "Changing this password will force all LD users to re-login."
+        },
         "logMaxFiles": {
           "label": "Log Retention (days)",
           "desc": "Maximum number of daily log files to keep during rotation. Default: 7."
@@ -742,6 +751,8 @@
       "name": "Name",
       "provider": "Provider",
       "active": "Active",
+      "banStatus": "Ban",
+      "rpm": "RPM",
       "keys": "Keys",
       "created": "Created",
       "lastLogin": "Last Login",
@@ -761,6 +772,7 @@
       "title": "Audit Logs",
       "filterUser": "Filter by User",
       "filterEndpoint": "Filter by Endpoint",
+      "filterIp": "IP Address",
       "filterModel": "Filter by Model",
       "timeFrom": "From",
       "timeTo": "To",

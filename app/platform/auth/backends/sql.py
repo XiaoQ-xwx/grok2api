@@ -40,6 +40,8 @@ users_table = sa.Table(
     sa.Column("avatar_url", sa.Text, nullable=True),
     sa.Column("trust_level", sa.Integer, nullable=True),
     sa.Column("is_active", sa.Boolean, nullable=False, default=True),
+    sa.Column("banned_until", sa.DateTime, nullable=True),
+    sa.Column("rpm_limit", sa.Integer, nullable=True),
     sa.Column("created_at", sa.DateTime, nullable=False),
     sa.Column("updated_at", sa.DateTime, nullable=False),
     sa.Column("last_login_at", sa.DateTime, nullable=True),
@@ -140,6 +142,8 @@ def _row_to_user(row: Any) -> User:
         avatar_url=row.avatar_url,
         trust_level=row.trust_level,
         is_active=row.is_active,
+        banned_until=row.banned_until if hasattr(row, "banned_until") else None,
+        rpm_limit=row.rpm_limit if hasattr(row, "rpm_limit") else None,
         created_at=row.created_at,
         updated_at=row.updated_at,
         last_login_at=row.last_login_at,
@@ -154,7 +158,6 @@ def _row_to_key(row: Any) -> UserApiKey:
         key_prefix=row.key_prefix,
         key_fingerprint=row.key_fingerprint,
         hashed_key=row.hashed_key,
-        rpm_limit=row.rpm_limit,
         is_banned=row.is_banned,
         last_used_at=row.last_used_at,
         created_at=row.created_at,
@@ -191,6 +194,16 @@ class SqlUserKeyRepository:
     async def initialize(self) -> None:
         async with self._engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
+        # Schema migration: add banned_until and rpm_limit columns if missing
+        for col_sql in [
+            "ALTER TABLE users ADD COLUMN banned_until DATETIME NULL",
+            "ALTER TABLE users ADD COLUMN rpm_limit INTEGER NULL",
+        ]:
+            try:
+                async with self._engine.begin() as conn:
+                    await conn.execute(sa.text(col_sql))
+            except Exception:
+                pass
 
     # ── Users ──────────────────────────────────────────────────────────
 
@@ -316,6 +329,39 @@ class SqlUserKeyRepository:
             )
             return result.rowcount > 0
 
+    async def ban_user(self, user_id: str, banned_until: datetime) -> User | None:
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                users_table.update()
+                .where(users_table.c.id == user_id)
+                .values(banned_until=banned_until, updated_at=_now())
+            )
+            if result.rowcount == 0:
+                return None
+        return await self.get_user(user_id)
+
+    async def unban_user(self, user_id: str) -> User | None:
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                users_table.update()
+                .where(users_table.c.id == user_id)
+                .values(banned_until=None, updated_at=_now())
+            )
+            if result.rowcount == 0:
+                return None
+        return await self.get_user(user_id)
+
+    async def set_user_rpm(self, user_id: str, rpm_limit: int | None) -> User | None:
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                users_table.update()
+                .where(users_table.c.id == user_id)
+                .values(rpm_limit=rpm_limit, updated_at=_now())
+            )
+            if result.rowcount == 0:
+                return None
+        return await self.get_user(user_id)
+
     # ── API Keys ───────────────────────────────────────────────────────
 
     async def create_key(
@@ -424,12 +470,10 @@ class SqlUserKeyRepository:
             )
             return (await conn.execute(q)).scalar() or 0
 
-    async def update_key(self, key_id: str, key_name: str | None = None, rpm_limit: int | None = None) -> UserApiKey | None:
+    async def update_key(self, key_id: str, key_name: str | None = None) -> UserApiKey | None:
         values: dict[str, Any] = {"updated_at": _now()}
         if key_name is not None:
             values["key_name"] = key_name
-        if rpm_limit is not None:
-            values["rpm_limit"] = rpm_limit
         async with self._engine.begin() as conn:
             result = await conn.execute(
                 keys_table.update().where(keys_table.c.id == key_id).values(**values)
@@ -507,6 +551,8 @@ class SqlUserKeyRepository:
             conditions.append(audit_table.c.model == query.model)
         if query.status_code is not None:
             conditions.append(audit_table.c.status_code == query.status_code)
+        if query.ip_address:
+            conditions.append(audit_table.c.ip_address.like(f"{query.ip_address}%"))
         if query.time_from:
             conditions.append(audit_table.c.timestamp >= query.time_from)
         if query.time_to:

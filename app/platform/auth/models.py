@@ -16,6 +16,8 @@ class User(BaseModel):
     avatar_url: str | None = None
     trust_level: int | None = None
     is_active: bool = True
+    banned_until: datetime | None = None
+    rpm_limit: int | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login_at: datetime | None = None
@@ -28,7 +30,6 @@ class UserApiKey(BaseModel):
     key_prefix: str
     key_fingerprint: str
     hashed_key: str
-    rpm_limit: int | None = None
     is_banned: bool = False
     last_used_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -42,7 +43,6 @@ class ApiKeyContext:
     user_id: str | None
     key_id: str | None
     key_name: str | None
-    rpm_limit: int | None
     is_global_key: bool
 
 
@@ -68,6 +68,7 @@ class AuditLogQuery(BaseModel):
     endpoint: str | None = None
     model: str | None = None
     status_code: int | None = None
+    ip_address: str | None = None
     time_from: datetime | None = None
     time_to: datetime | None = None
     page: int = 1
@@ -95,6 +96,11 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class UserAdminUpdate(BaseModel):
+    banned_until: datetime | None = None
+    rpm_limit: int | None = None
+
+
 class KeyCreate(BaseModel):
     key_name: str = "Default"
 
@@ -112,7 +118,6 @@ class KeySummary(BaseModel):
     key_name: str
     key_prefix: str
     is_banned: bool
-    rpm_limit: int | None
     last_used_at: datetime | None
     created_at: datetime
     revoked_at: datetime | None
@@ -120,7 +125,6 @@ class KeySummary(BaseModel):
 
 class KeyUpdate(BaseModel):
     key_name: str | None = None
-    rpm_limit: int | None = None
 
 
 class UserWithKeyCount(BaseModel):

@@ -38,7 +38,6 @@ async def list_my_keys(request: Request, user: User | None = Depends(get_webui_u
             key_name=k.key_name,
             key_prefix=k.key_prefix,
             is_banned=k.is_banned,
-            rpm_limit=k.rpm_limit,
             last_used_at=k.last_used_at,
             created_at=k.created_at,
             revoked_at=k.revoked_at,

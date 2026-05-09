@@ -88,10 +88,11 @@ async def verify_api_key(
                 user_id=None,
                 key_id=None,
                 key_name=None,
-                rpm_limit=None,
                 is_global_key=True,
             )
             request.state.api_key_context = ctx
+            # Global key RPM — rate limit by client IP
+            await _check_rpm(request, bucket=None, user_id=None)
             return ctx
 
     # 2) No keys configured at all — allow all traffic
@@ -101,7 +102,6 @@ async def verify_api_key(
             user_id=None,
             key_id=None,
             key_name=None,
-            rpm_limit=None,
             is_global_key=True,
         )
         request.state.api_key_context = ctx
@@ -126,6 +126,20 @@ async def verify_api_key(
                 from .keygen import verify_api_key_hash
                 if verify_api_key_hash(token, key_record.hashed_key):
                     from datetime import datetime
+
+                    # Check user ban status
+                    user = await repo.get_user(key_record.user_id)
+                    if user and not user.is_active:
+                        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account is deactivated.")
+                    if user and user.banned_until and user.banned_until > datetime.utcnow():
+                        raise HTTPException(
+                            status.HTTP_403_FORBIDDEN,
+                            f"User is banned until {user.banned_until.isoformat()}",
+                        )
+
+                    # User-key RPM — rate limit by user_id
+                    await _check_rpm(request, bucket=key_record.user_id, user_id=key_record.user_id, user=user)
+
                     try:
                         await repo.record_key_usage(key_record.id, datetime.utcnow())
                     except Exception:
@@ -136,10 +150,8 @@ async def verify_api_key(
                         user_id=key_record.user_id,
                         key_id=key_record.id,
                         key_name=key_record.key_name,
-                        rpm_limit=key_record.rpm_limit,
                         is_global_key=False,
                     )
-                    # Store context on request.state for audit middleware
                     request.state.api_key_context = ctx
                     return ctx
 
@@ -147,6 +159,48 @@ async def verify_api_key(
     if token is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing or invalid Authorization header.")
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Invalid API key.")
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _check_rpm(request: Request, bucket: str | None, user_id: str | None, user=None) -> None:
+    """Enforce RPM limit via Redis sliding window. Fail-closed on Redis errors."""
+    from app.platform.auth.rate_limit import get_effective_rpm
+
+    limiter = getattr(request.app.state, "rate_limiter", None)
+    if limiter is None or limiter._r is None:
+        return
+
+    if user_id and user:
+        effective = get_effective_rpm(user.rpm_limit)
+    else:
+        effective = get_effective_rpm(None)
+
+    if effective <= 0:
+        return
+
+    if bucket is None:
+        bucket = _get_client_ip(request)
+
+    try:
+        allowed = await limiter.check(bucket, effective)
+        if not allowed:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Rate limit exceeded. Limit: {effective} RPM",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Rate limit service unavailable",
+        )
 
 
 async def verify_admin_key(
@@ -171,6 +225,7 @@ async def verify_admin_key(
 
 
 async def verify_webui_key(
+    request: Request,
     authorization: str | None = Header(default=None),
 ) -> None:
     """Validate Bearer token for webui endpoints.
@@ -190,9 +245,23 @@ async def verify_webui_key(
     if webui_key and hmac.compare_digest(token, webui_key):
         return
 
-    # 2) LinuxDo OAuth token
+    # 2) LinuxDo OAuth token — check ban status
+    from datetime import datetime
     from app.platform.auth.linuxdo import verify_token
-    if verify_token(token):
+
+    ld_user = verify_token(token)
+    if ld_user:
+        repo = _get_user_key_repo(request)
+        if repo:
+            user = await repo.get_user_by_provider("linuxdo", ld_user.id)
+            if user:
+                if not user.is_active:
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, "Account is deactivated.")
+                if user.banned_until and user.banned_until > datetime.utcnow():
+                    raise HTTPException(
+                        status.HTTP_403_FORBIDDEN,
+                        f"User is banned until {user.banned_until.isoformat()}",
+                    )
         return
 
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication token.")
@@ -212,7 +281,9 @@ async def get_webui_user(
     if not token:
         return None
 
+    from datetime import datetime
     from app.platform.auth.linuxdo import verify_token
+
     ld_user = verify_token(token)
     if ld_user is None:
         return None
@@ -222,7 +293,13 @@ async def get_webui_user(
         return None
 
     try:
-        return await repo.get_user_by_provider("linuxdo", ld_user.id)
+        user = await repo.get_user_by_provider("linuxdo", ld_user.id)
+        if user:
+            if not user.is_active:
+                return None
+            if user.banned_until and user.banned_until > datetime.utcnow():
+                return None
+        return user
     except Exception:
         return None
 

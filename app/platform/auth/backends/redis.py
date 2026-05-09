@@ -56,6 +56,8 @@ def _audit_key(audit_id: str) -> str:
 
 
 def _user_from_hash(data: dict) -> User:
+    banned = data.get(b"banned_until", b"").decode()
+    rpm_raw = data.get(b"rpm_limit", b"")
     return User(
         id=data.get(b"id", b"").decode(),
         provider=data.get(b"provider", b"").decode(),
@@ -65,6 +67,8 @@ def _user_from_hash(data: dict) -> User:
         avatar_url=data.get(b"avatar_url", b"").decode() or None,
         trust_level=int(data[b"trust_level"]) if data.get(b"trust_level") else None,
         is_active=data.get(b"is_active", b"1") == b"1",
+        banned_until=_parse_dt(banned) if banned else None,
+        rpm_limit=int(rpm_raw) if rpm_raw and rpm_raw != b"" else None,
         created_at=_parse_dt(data.get(b"created_at", b"").decode()) or datetime.utcnow(),
         updated_at=_parse_dt(data.get(b"updated_at", b"").decode()) or datetime.utcnow(),
         last_login_at=_parse_dt(data.get(b"last_login_at", b"").decode()) if data.get(b"last_login_at") else None,
@@ -79,7 +83,6 @@ def _key_from_hash(data: dict) -> UserApiKey:
         key_prefix=data.get(b"key_prefix", b"").decode(),
         key_fingerprint=data.get(b"key_fingerprint", b"").decode(),
         hashed_key=data.get(b"hashed_key", b"").decode(),
-        rpm_limit=int(data[b"rpm_limit"]) if data.get(b"rpm_limit") else None,
         is_banned=data.get(b"is_banned", b"0") == b"1",
         last_used_at=_parse_dt(data.get(b"last_used_at", b"").decode()) if data.get(b"last_used_at") else None,
         created_at=_parse_dt(data.get(b"created_at", b"").decode()) or datetime.utcnow(),
@@ -217,6 +220,36 @@ class RedisUserKeyRepository:
         await self._r.hset(_user_key(user_id), "updated_at", _now())
         return True
 
+    async def ban_user(self, user_id: str, banned_until: datetime) -> User | None:
+        exists = await self._r.exists(_user_key(user_id))
+        if not exists:
+            return None
+        mapping = {
+            "banned_until": banned_until.isoformat(),
+            "updated_at": _now(),
+        }
+        await self._r.hset(_user_key(user_id), mapping=mapping)
+        return await self.get_user(user_id)
+
+    async def unban_user(self, user_id: str) -> User | None:
+        exists = await self._r.exists(_user_key(user_id))
+        if not exists:
+            return None
+        mapping = {"banned_until": "", "updated_at": _now()}
+        await self._r.hset(_user_key(user_id), mapping=mapping)
+        return await self.get_user(user_id)
+
+    async def set_user_rpm(self, user_id: str, rpm_limit: int | None) -> User | None:
+        exists = await self._r.exists(_user_key(user_id))
+        if not exists:
+            return None
+        mapping = {
+            "rpm_limit": str(rpm_limit) if rpm_limit is not None else "",
+            "updated_at": _now(),
+        }
+        await self._r.hset(_user_key(user_id), mapping=mapping)
+        return await self.get_user(user_id)
+
     # ── API Keys ───────────────────────────────────────────────────────
 
     async def create_key(
@@ -232,7 +265,7 @@ class RedisUserKeyRepository:
         data = {
             "id": key_id, "user_id": user_id, "key_name": key_name,
             "key_prefix": key_prefix, "key_fingerprint": key_fingerprint,
-            "hashed_key": hashed_key, "rpm_limit": "", "is_banned": "0",
+            "hashed_key": hashed_key, "is_banned": "0",
             "last_used_at": "", "created_at": now, "updated_at": now, "revoked_at": "",
         }
         pipe = self._r.pipeline()
@@ -317,15 +350,13 @@ class RedisUserKeyRepository:
         keys = await self.list_user_keys(user_id)
         return len(keys)
 
-    async def update_key(self, key_id: str, key_name: str | None = None, rpm_limit: int | None = None) -> UserApiKey | None:
+    async def update_key(self, key_id: str, key_name: str | None = None) -> UserApiKey | None:
         existing = await self.get_key(key_id)
         if not existing:
             return None
         mapping = {"updated_at": _now()}
         if key_name is not None:
             mapping["key_name"] = key_name
-        if rpm_limit is not None:
-            mapping["rpm_limit"] = str(rpm_limit)
         await self._r.hset(_key_key(key_id), mapping=mapping)
         return await self.get_key(key_id)
 
@@ -394,6 +425,9 @@ class RedisUserKeyRepository:
                 continue
             if query.status_code is not None and entry.status_code != query.status_code:
                 continue
+            if query.ip_address:
+                if not entry.ip_address or not entry.ip_address.startswith(query.ip_address):
+                    continue
             if query.time_from and entry.timestamp < query.time_from:
                 continue
             if query.time_to and entry.timestamp > query.time_to:

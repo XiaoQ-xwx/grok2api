@@ -10,7 +10,9 @@ from app.platform.auth.linuxdo import (
     exchange_code,
     fetch_user,
     get_authorize_url,
+    is_access_password_enabled,
     is_linuxdo_enabled,
+    issue_pending_token,
     issue_token,
     upsert_linuxdo_user,
     verify_state,
@@ -75,10 +77,72 @@ async def linuxdo_callback(request: Request, code: str = Query(...), state: str 
         return HTMLResponse("<h3>OAuth 授权失败：无法获取用户信息</h3>", status_code=400)
 
     user_key_repo = getattr(request.app.state, "user_key_repo", None)
-    await upsert_linuxdo_user(user, repo=user_key_repo)
+    local_user = await upsert_linuxdo_user(user, repo=user_key_repo)
+
+    if local_user:
+        if not local_user.is_active:
+            return HTMLResponse("<h3>账号已被停用</h3>", status_code=403)
+        if local_user.banned_until and local_user.banned_until > __import__("datetime").datetime.utcnow():
+            return HTMLResponse(
+                f"<h3>账号已被封禁至 {local_user.banned_until.strftime('%Y-%m-%d %H:%M:%S UTC')}</h3>",
+                status_code=403,
+            )
+
+    if is_access_password_enabled():
+        pending = issue_pending_token(local_user.id if local_user else str(user.id))
+        qs = urlencode({"token": pending})
+        return RedirectResponse(f"/admin/verify-password?{qs}")
 
     token = issue_token(user)
     qs = urlencode({"oauth_token": token})
+    return RedirectResponse(f"/webui/login?{qs}")
+
+
+# --- LD password verification page ---
+
+@router.get("/admin/verify-password", include_in_schema=False)
+async def admin_verify_password_page():
+    return _serve_html("admin/verify-password.html")
+
+
+@router.post("/admin/verify-password", include_in_schema=False)
+async def admin_verify_password_submit(request: Request):
+    from app.platform.auth.linuxdo import (
+        LinuxDoUser,
+        issue_token,
+        verify_access_password,
+        verify_pending_token,
+    )
+    from app.platform.config.snapshot import get_config as _cfg
+
+    form = await request.form()
+    token = str(form.get("token", ""))
+    password = str(form.get("password", ""))
+
+    pending = verify_pending_token(token)
+    if not pending:
+        return HTMLResponse("<h3>验证过期或无效，请重新登录</h3>", status_code=401)
+
+    stored_hash = str(_cfg("auth.linuxdo.access_password_hash", "") or "")
+    if not stored_hash or not verify_access_password(password, stored_hash):
+        return HTMLResponse("<h3>访问密码错误</h3>", status_code=401)
+
+    repo = getattr(request.app.state, "user_key_repo", None)
+    local_user = None
+    if repo:
+        local_user = await repo.get_user_by_provider("linuxdo", int(pending["uid"]))
+
+    if not local_user:
+        return HTMLResponse("<h3>用户未找到</h3>", status_code=400)
+
+    session_token = issue_token(LinuxDoUser(
+        id=local_user.provider_user_id or 0,
+        username=local_user.username,
+        name=local_user.name,
+        avatar_url=local_user.avatar_url,
+        trust_level=local_user.trust_level,
+    ))
+    qs = urlencode({"oauth_token": session_token})
     return RedirectResponse(f"/webui/login?{qs}")
 
 
