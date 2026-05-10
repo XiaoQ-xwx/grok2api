@@ -103,7 +103,7 @@ async def _linuxdo_callback(request: Request, code: str, state: str):
             )
 
     if is_access_password_enabled():
-        pending = issue_pending_token(local_user.id if local_user else str(user.id))
+        pending = issue_pending_token(str(user.id))
         qs = urlencode({"token": pending})
         return RedirectResponse(f"/admin/verify-password?{qs}")
 

@@ -478,7 +478,7 @@ const SCHEMA_DEF = [
         section: 'auth.linuxdo',
         fields: [
           { key: 'access_password_enabled', label: '启用 LD 访问密码', labelKey: 'config.schema.fields.ldPasswordEnabled.label', type: 'bool', desc: '开启后 LD OAuth 用户需额外输入访问密码完成二次验证。', descKey: 'config.schema.fields.ldPasswordEnabled.desc' },
-          { key: 'access_password', label: 'LD 访问密码', labelKey: 'config.schema.fields.ldPassword.label', type: 'password', desc: '修改密码将使所有 LD 用户重新登录。', descKey: 'config.schema.fields.ldPassword.desc', rand: true, showIf: 'auth.linuxdo.access_password_enabled' },
+          { key: 'access_password', label: 'LD 访问密码', labelKey: 'config.schema.fields.ldPassword.label', type: 'password', desc: '修改密码将使所有 LD 用户重新登录。', descKey: 'config.schema.fields.ldPassword.desc', rand: true, showIf: 'auth.linuxdo.access_password_enabled', hasValuePath: 'auth.linuxdo.access_password_hash' },
         ]
       },
       {
@@ -1084,7 +1084,7 @@ document.addEventListener('click', (event) => {
   if (!event.target.closest?.('.cfg-help')) _hideHelpTip();
 });
 
-function renderInput(field, section, value) {
+function renderInput(field, section, value, hasStoredValue) {
   const fp = _fullPath(section, field.key);
 
   const onChange = (v) => {
@@ -1159,6 +1159,7 @@ function renderInput(field, section, value) {
     type: field.type === 'password' ? 'password' : 'text',
     id: `field-${section}-${field.key}`,
     value: value ?? '',
+    placeholder: (field.type === 'password' && hasStoredValue && !value) ? '已设置' : '',
     autocomplete: 'off',
   });
   inp.addEventListener('input', () => onChange(inp.value));
@@ -1184,7 +1185,11 @@ function renderRow(field, section, tabId) {
   const isDirty = fp in _dirty;
 
   const dot   = _el('span', { class: 'cfg-modified-dot' });
-  const input = renderInput(field, section, isDirty ? _dirty[fp] : value);
+  let hasStoredValue = false;
+  if (field.hasValuePath && !isDirty && !value) {
+    hasStoredValue = !!_getByPath(_cfg, field.hasValuePath);
+  }
+  const input = renderInput(field, section, isDirty ? _dirty[fp] : value, hasStoredValue);
   const labelChildren = [field.label];
 
   if (section === 'app' && field.key === 'webui_enabled') {
