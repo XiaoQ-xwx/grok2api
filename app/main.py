@@ -199,7 +199,8 @@ async def lifespan(app: FastAPI):
             await asyncio.sleep(3600)  # every hour
             try:
                 from datetime import datetime, timedelta
-                cutoff = datetime.utcnow() - timedelta(days=retention_days)
+                from zoneinfo import ZoneInfo
+                cutoff = datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(days=retention_days)
                 deleted = await user_key_repo.cleanup_audit_logs(cutoff)
                 if deleted:
                     logger.info("audit log cleanup: deleted={}", deleted)

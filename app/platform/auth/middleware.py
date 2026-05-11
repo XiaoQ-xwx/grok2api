@@ -151,6 +151,7 @@ async def verify_api_key(
                         key_id=key_record.id,
                         key_name=key_record.key_name,
                         is_global_key=False,
+                        user_name=user.name or user.username if user else None,
                     )
                     request.state.api_key_context = ctx
                     return ctx

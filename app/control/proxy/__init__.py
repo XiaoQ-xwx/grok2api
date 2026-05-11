@@ -75,6 +75,17 @@ class ProxyDirectory:
         base_pool = tuple(cfg.get_list("proxy.egress.proxy_pool", []))
         res_pool = tuple(cfg.get_list("proxy.egress.resource_proxy_pool", []))
         clearance = resolve_clearance_config(cfg)
+        zp_enabled = cfg.get_bool("proxy.zenproxy.enabled", False)
+        zp_server = cfg.get_str("proxy.zenproxy.server", "")
+        zp_api_key = cfg.get_str("proxy.zenproxy.api_key", "")
+        zp_pool_size = cfg.get_int("proxy.zenproxy.pool_size", 50)
+        zp_country = cfg.get_str("proxy.zenproxy.country", "")
+        zp_proxy_type = cfg.get_str("proxy.zenproxy.proxy_type", "")
+        zp_chatgpt = cfg.get_bool("proxy.zenproxy.chatgpt", False)
+        zp_google = cfg.get_bool("proxy.zenproxy.google", False)
+        zp_residential = cfg.get_bool("proxy.zenproxy.residential", False)
+        zp_risk_max = cfg.get_float("proxy.zenproxy.risk_max", 0.0)
+        zp_use_client = cfg.get_bool("proxy.zenproxy.use_client_api", True)
         config_sig = (
             egress_mode.value,
             clearance_mode.value,
@@ -82,6 +93,17 @@ class ProxyDirectory:
             res_url,
             base_pool,
             res_pool,
+            zp_enabled,
+            zp_server,
+            zp_api_key,
+            zp_pool_size,
+            zp_country,
+            zp_proxy_type,
+            zp_chatgpt,
+            zp_google,
+            zp_residential,
+            zp_risk_max,
+            zp_use_client,
             cfg.get_str("proxy.clearance.flaresolverr_url", ""),
             clearance.cf_cookies,
             clearance.user_agent,
@@ -102,8 +124,19 @@ class ProxyDirectory:
                 )
 
         elif egress_mode == EgressMode.PROXY_POOL:
+            # Merge config-defined proxies with ZenProxy-fetched proxies.
+            zp_urls: list[str] = []
+            if zp_enabled and zp_server and zp_api_key:
+                try:
+                    from .providers.zenproxy import fetch_zenproxy_pool
+                    zp_urls = await fetch_zenproxy_pool()
+                except Exception as exc:
+                    logger.warning("zenproxy pool sync failed, using only config proxies: error=%s", exc)
+
             for i, url in enumerate(base_pool):
                 nodes.append(EgressNode(node_id=f"pool-{i}", proxy_url=url))
+            for i, url in enumerate(zp_urls):
+                nodes.append(EgressNode(node_id=f"zp-{i}", proxy_url=url))
             for i, url in enumerate(res_pool):
                 resource_nodes.append(
                     EgressNode(node_id=f"res-pool-{i}", proxy_url=url)

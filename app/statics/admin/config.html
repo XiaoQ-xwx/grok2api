@@ -756,6 +756,73 @@ const SCHEMA_DEF = [
         ]
       },
       {
+        title: 'ZenProxy 代理池', titleKey: 'config.schema.groups.zenproxy',
+        section: 'proxy.zenproxy',
+        fields: [
+          {
+            key: 'enabled', label: '启用', labelKey: 'config.schema.fields.zenproxyEnabled.label',
+            type: 'switch',
+            desc: '启用后自动从 ZenProxy 拉取代理注入到 proxy_pool。需确保 proxy.egress.mode = proxy_pool。',
+            descKey: 'config.schema.fields.zenproxyEnabled.desc',
+          },
+          {
+            key: 'server', label: '服务地址', labelKey: 'config.schema.fields.zenproxyServer.label',
+            type: 'text',
+            desc: 'ZenProxy 服务地址，如 https://zenproxy.top',
+          },
+          {
+            key: 'api_key', label: 'API Key', labelKey: 'config.schema.fields.zenproxyApiKey.label',
+            type: 'password',
+            desc: 'ZenProxy 用户 API Key，可在 ZenProxy 个人页面获取。',
+          },
+          {
+            key: 'pool_size', label: '代理数量', labelKey: 'config.schema.fields.zenproxyPoolSize.label',
+            type: 'number',
+            desc: '每次从 ZenProxy 拉取的代理数量上限。',
+          },
+          {
+            key: 'country', label: '国家过滤', labelKey: 'config.schema.fields.zenproxyCountry.label',
+            type: 'text',
+            desc: '按国家代码过滤（如 US、JP），留空表示不过滤。',
+          },
+          {
+            key: 'proxy_type', label: '代理类型', labelKey: 'config.schema.fields.zenproxyType.label',
+            type: 'text',
+            desc: '过滤代理类型（vmess/vless/trojan/shadowsocks/hysteria2/socks5/http/https），留空=全部。注意 curl_cffi 只能直接使用 http/socks5 类型。',
+          },
+          {
+            key: 'chatgpt', label: '仅 ChatGPT 可用', labelKey: 'config.schema.fields.zenproxyChatgpt.label',
+            type: 'switch',
+            desc: '仅拉取已验证支持 ChatGPT 的代理。',
+          },
+          {
+            key: 'google', label: '仅 Google 可用', labelKey: 'config.schema.fields.zenproxyGoogle.label',
+            type: 'switch',
+            desc: '仅拉取已验证支持 Google 的代理。',
+          },
+          {
+            key: 'residential', label: '仅住宅 IP', labelKey: 'config.schema.fields.zenproxyResidential.label',
+            type: 'switch',
+            desc: '仅拉取住宅 IP 代理。',
+          },
+          {
+            key: 'risk_max', label: '最大风险评分', labelKey: 'config.schema.fields.zenproxyRiskMax.label',
+            type: 'number',
+            desc: '风险评分上限（0~1），0 表示不过滤。',
+          },
+          {
+            key: 'use_client_api', label: '使用 Client API', labelKey: 'config.schema.fields.zenproxyUseClientApi.label',
+            type: 'switch',
+            desc: '使用 /api/client/fetch 接口（含完整 outbound 配置），关闭则使用 /api/fetch。',
+          },
+          {
+            key: 'timeout_sec', label: '请求超时（秒）', labelKey: 'config.schema.fields.zenproxyTimeout.label',
+            type: 'number',
+            desc: 'ZenProxy API 请求超时时间。',
+          },
+        ]
+      },
+      {
         title: '重试策略', titleKey: 'config.schema.groups.retry',
         section: 'retry',
         fields: [
@@ -1417,97 +1484,6 @@ async function loadUsers() {
   } catch { return { items: [], total: 0 }; }
 }
 
-function renderUsersPanel() {
-  const panel = document.getElementById('panel-users');
-  if (!panel || panel.querySelector('.admin-panel')) return;
-  panel.innerHTML = `<div class="admin-panel">
-    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.users.title">用户管理</span></div>
-    <div class="admin-panel-body"><div id="usersTable" class="table-card"><div class="empty-state">加载中…</div></div></div>
-  </div>`;
-  populateUsersTable();
-}
-
-async function populateUsersTable() {
-  const data = await loadUsers();
-  const container = document.getElementById('usersTable');
-  if (!container) return;
-  if (!data.items.length) {
-    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
-    return;
-  }
-  const rows = data.items.map(item => {
-    const u = item.user;
-    return `<tr>
-      <td>${escHtml(u.username)}</td>
-      <td>${escHtml(u.name || '-')}</td>
-      <td><span class="badge ${u.provider === 'linuxdo' ? 'badge-premium' : 'badge-basic'}">${escHtml(u.provider)}</span></td>
-      <td>${u.is_active ? '<span class="badge badge-active">活跃</span>' : '<span class="badge badge-expired">停用</span>'}</td>
-      <td>${item.key_count}</td>
-      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
-    </tr>`;
-  }).join('');
-  container.innerHTML = `<table><thead><tr>
-    <th data-i18n="admin.users.username">用户名</th>
-    <th data-i18n="admin.users.name">名称</th>
-    <th data-i18n="admin.users.provider">来源</th>
-    <th data-i18n="admin.users.active">活跃</th>
-    <th data-i18n="admin.users.keys">密钥数</th>
-    <th data-i18n="admin.users.created">创建时间</th>
-  </tr></thead><tbody>${rows}</tbody></table>`;
-}
-
-// ── Admin: Audit panel ──────────────────────────────────────────────────────
-async function loadAuditLogs(params = '') {
-  try {
-    const resp = await fetch(ADMIN_API + '/audit-logs?page_size=50' + params, { headers: await authHeaders() });
-    if (!resp.ok) throw new Error(resp.status);
-    return await resp.json();
-  } catch { return { items: [], total: 0 }; }
-}
-
-function renderAuditPanel() {
-  const panel = document.getElementById('panel-audit');
-  if (!panel || panel.querySelector('.admin-panel')) return;
-  panel.innerHTML = `<div class="admin-panel">
-    <div class="admin-panel-header"><span class="admin-panel-title" data-i18n="admin.audit.title">审计日志</span></div>
-    <div class="admin-panel-body">
-      <div class="admin-filter-bar">
-        <input id="auditFilterUser" class="input" placeholder="用户 ID" data-i18n-placeholder="admin.audit.filterUser" style="max-width:180px">
-        <input id="auditFilterEndpoint" class="input" placeholder="端点" placeholder="Endpoint" data-i18n-placeholder="admin.audit.filterEndpoint" style="max-width:140px">
-        <button class="btn btn-sm btn-outline" onclick="populateAuditTable()">筛选</button>
-      </div>
-      <div id="auditTable" class="table-card"><div class="empty-state">加载中…</div></div>
-    </div>
-  </div>`;
-  populateAuditTable();
-}
-
-async function populateAuditTable() {
-  let params = '';
-  const uid = document.getElementById('auditFilterUser')?.value.trim();
-  const ep = document.getElementById('auditFilterEndpoint')?.value.trim();
-  if (uid) params += '&user_id=' + encodeURIComponent(uid);
-  if (ep) params += '&endpoint=' + encodeURIComponent(ep);
-  const data = await loadAuditLogs(params);
-  const container = document.getElementById('auditTable');
-  if (!container) return;
-  if (!data.items.length) {
-    container.innerHTML = `<div class="empty-state">暂无审计日志</div>`;
-    return;
-  }
-  const rows = data.items.map(e => `<tr>
-    <td style="font-size:11px">${new Date(e.timestamp).toLocaleString()}</td>
-    <td>${escHtml(e.user_id || '-')}</td>
-    <td>${escHtml(e.endpoint)}</td>
-    <td>${escHtml(e.model || '-')}</td>
-    <td>${e.status_code}</td>
-    <td><span class="badge ${e.auth_type === 'user_key' ? 'badge-premium' : 'badge-basic'}">${e.auth_type === 'user_key' ? '用户密钥' : '全局密钥'}</span></td>
-  </tr>`).join('');
-  container.innerHTML = `<table><thead><tr>
-    <th>时间</th><th>用户</th><th>端点</th><th>模型</th><th>状态码</th><th>认证类型</th>
-  </tr></thead><tbody>${rows}</tbody></table>`;
-}
-
 async function authHeaders() {
   const key = await adminKey.get();
   return key ? { Authorization: `Bearer ${key}` } : {};
@@ -1623,6 +1599,10 @@ function renderUsersPanel() {
           <button class="btn btn-sm btn-primary" onclick="saveGlobalRpm()">保存</button>
         </div>
       </div>
+      <div class="admin-filter-bar">
+        <input id="userSearchInput" class="input" type="search" data-i18n-placeholder="admin.users.searchPlaceholder" placeholder="搜索用户名或昵称" onkeydown="if(event.key==='Enter')searchUsers()" style="max-width:260px">
+        <button class="btn btn-sm btn-outline" onclick="searchUsers()">搜索</button>
+      </div>
       <div id="usersTable" class="table-card"><div class="empty-state">加载中…</div></div>
     </div>
   </div>`;
@@ -1639,25 +1619,30 @@ async function loadGlobalRpm() {
   } catch {}
 }
 
-async function saveGlobalRpm() {
-  const inp = document.getElementById('globalRpmInput');
-  const v = inp.value.trim();
-  const rpm = v === '' ? 0 : parseInt(v);
-  if (isNaN(rpm) || rpm < 0) { showToast('请输入有效数值', 'error'); return; }
-  try {
-    await _api('POST', '/config', { rate_limit: { global_rpm: rpm } });
-    showToast('全局 RPM 已更新');
-  } catch (e) { showToast('保存失败: ' + e.message, 'error'); }
-}
-
-async function populateUsersTable() {
-  const data = await loadUsers();
+async function searchUsers() {
+  const input = document.getElementById('userSearchInput');
+  const term = input?.value.trim();
+  const data = term ? await loadUsersWithSearch(term) : await loadUsers();
   const container = document.getElementById('usersTable');
   if (!container) return;
   if (!data.items.length) {
-    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
+    container.innerHTML = `<div class="empty-state">${term ? '暂无匹配用户' : '暂无用户数据'}</div>`;
     return;
   }
+  renderUsersTable(data);
+}
+
+async function loadUsersWithSearch(search) {
+  try {
+    const resp = await fetch(ADMIN_API + '/users?search=' + encodeURIComponent(search), { headers: await authHeaders() });
+    if (!resp.ok) throw new Error(resp.status);
+    return await resp.json();
+  } catch { return { items: [], total: 0 }; }
+}
+
+function renderUsersTable(data) {
+  const container = document.getElementById('usersTable');
+  if (!container) return;
   const rows = data.items.map(item => {
     const u = item.user;
     const banned = u.banned_until && new Date(u.banned_until) > new Date();
@@ -1684,6 +1669,28 @@ async function populateUsersTable() {
     <th data-i18n="admin.users.created">创建时间</th>
     <th data-i18n="admin.users.actions">操作</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function saveGlobalRpm() {
+  const inp = document.getElementById('globalRpmInput');
+  const v = inp.value.trim();
+  const rpm = v === '' ? 0 : parseInt(v);
+  if (isNaN(rpm) || rpm < 0) { showToast('请输入有效数值', 'error'); return; }
+  try {
+    await _api('POST', '/config', { rate_limit: { global_rpm: rpm } });
+    showToast('全局 RPM 已更新');
+  } catch (e) { showToast('保存失败: ' + e.message, 'error'); }
+}
+
+async function populateUsersTable() {
+  const data = await loadUsers();
+  const container = document.getElementById('usersTable');
+  if (!container) return;
+  if (!data.items.length) {
+    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
+    return;
+  }
+  renderUsersTable(data);
 }
 
 UserManageModal._loadAndOpen = async function(uid) {
@@ -1740,7 +1747,7 @@ async function populateAuditTable() {
   }
   const rows = data.items.map(e => `<tr>
     <td style="font-size:11px">${new Date(e.timestamp).toLocaleString()}</td>
-    <td>${escHtml(e.user_id || '-')}</td>
+    <td>${escHtml(e.user_name || e.user_id || '-')}</td>
     <td style="font-size:11px;font-family:mono">${escHtml(e.ip_address || '-')}</td>
     <td>${escHtml(e.endpoint)}</td>
     <td>${escHtml(e.model || '-')}</td>

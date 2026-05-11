@@ -351,6 +351,7 @@
         "batchConcurrency": "Batch Concurrency",
         "egressProxy": "Egress Proxy",
         "clearance": "Cloudflare Clearance",
+        "zenproxy": "ZenProxy Pool",
         "retry": "Retry Policy",
         "timeouts": "Request Timeouts",
         "imageProtocol": "NSFW and Image Streaming",
@@ -636,6 +637,54 @@
         "logMaxFiles": {
           "label": "Log Retention (days)",
           "desc": "Maximum number of daily log files to keep during rotation. Default: 7."
+        },
+        "zenproxyEnabled": {
+          "label": "Enable ZenProxy",
+          "desc": "Automatically fetch proxies from ZenProxy and inject into the proxy pool. Requires proxy.egress.mode = proxy_pool."
+        },
+        "zenproxyServer": {
+          "label": "ZenProxy Server",
+          "desc": "ZenProxy server address, e.g. https://zenproxy.top."
+        },
+        "zenproxyApiKey": {
+          "label": "ZenProxy API Key",
+          "desc": "ZenProxy user API Key, available from the ZenProxy profile page."
+        },
+        "zenproxyPoolSize": {
+          "label": "Proxy Count",
+          "desc": "Maximum number of proxies to fetch from ZenProxy per sync."
+        },
+        "zenproxyCountry": {
+          "label": "Country Filter",
+          "desc": "Filter by country code (e.g. US, JP). Leave empty to disable."
+        },
+        "zenproxyType": {
+          "label": "Proxy Type Filter",
+          "desc": "Filter by proxy type (vmess/vless/trojan/shadowsocks/hysteria2/socks5/http/https). curl_cffi can only use http/socks5 natively."
+        },
+        "zenproxyChatgpt": {
+          "label": "ChatGPT-Ready Only",
+          "desc": "Only fetch proxies verified to support ChatGPT."
+        },
+        "zenproxyGoogle": {
+          "label": "Google-Ready Only",
+          "desc": "Only fetch proxies verified to support Google."
+        },
+        "zenproxyResidential": {
+          "label": "Residential IP Only",
+          "desc": "Only fetch residential IP proxies."
+        },
+        "zenproxyRiskMax": {
+          "label": "Max Risk Score",
+          "desc": "Maximum risk score threshold (0~1). 0 disables the filter."
+        },
+        "zenproxyUseClientApi": {
+          "label": "Use Client API",
+          "desc": "Use /api/client/fetch (includes full outbound config). Disable to use /api/fetch instead."
+        },
+        "zenproxyTimeout": {
+          "label": "Request Timeout (s)",
+          "desc": "ZenProxy API request timeout in seconds."
         }
       }
     }
@@ -756,7 +805,8 @@
       "keys": "Keys",
       "created": "Created",
       "lastLogin": "Last Login",
-      "actions": "Actions"
+      "actions": "Actions",
+      "searchPlaceholder": "Search username or name"
     },
     "keys": {
       "title": "Key Management",

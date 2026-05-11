@@ -133,6 +133,36 @@ timeout_sec = 60
 refresh_interval = 3600
 
 
+# ==================== ZenProxy 代理池集成 ====================
+[proxy.zenproxy]
+# 是否启用 ZenProxy 代理池（需要 proxy.egress.mode = "proxy_pool"）
+enabled = false
+# ZenProxy 服务地址
+server = "https://zenproxy.top"
+# ZenProxy 用户 API Key
+api_key = ""
+# 每次从 ZenProxy 拉取的代理数量
+pool_size = 50
+# 国家过滤（如 US、JP），留空表示不过滤
+country = ""
+# 代理类型过滤（vmess、vless、trojan、shadowsocks、hysteria2、socks5、http、https），留空=全部
+# 注意：curl_cffi 只能直接使用 http/https/socks5/socks4 类型代理
+# vmess/vless 等协议代理需要本地 sing-box-zenproxy 桥接
+proxy_type = ""
+# 仅拉取支持 ChatGPT 的代理
+chatgpt = false
+# 仅拉取支持 Google 的代理
+google = false
+# 仅拉取住宅 IP 代理
+residential = false
+# 最大风险评分（0~1），0 表示不过滤
+risk_max = 0.0
+# 使用 /api/client/fetch 接口（含完整 outbound 配置），false 则使用 /api/fetch
+use_client_api = true
+# 请求超时（秒）
+timeout_sec = 30
+
+
 # ==================== 重试策略 ====================
 [retry]
 # [Transport 层] 触发重建代理 Session 的 HTTP 状态码

@@ -1,8 +1,9 @@
 """User, API key, and audit log data models."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
@@ -44,14 +45,15 @@ class ApiKeyContext:
     key_id: str | None
     key_name: str | None
     is_global_key: bool
+    user_name: str | None = None
 
 
 class AuditLog(BaseModel):
     id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("Asia/Shanghai")))
     user_id: str | None = None
     key_id: str | None = None
-    auth_type: str = "global_key"  # "user_key" | "global_key"
+    auth_type: str = "global_key"
     endpoint: str = ""
     method: str = "GET"
     model: str | None = None
@@ -60,6 +62,7 @@ class AuditLog(BaseModel):
     ip_address: str | None = None
     request_id: str | None = None
     error_code: str | None = None
+    user_name: str | None = None
 
 
 class AuditLogQuery(BaseModel):

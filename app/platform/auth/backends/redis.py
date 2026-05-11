@@ -92,9 +92,10 @@ def _key_from_hash(data: dict) -> UserApiKey:
 
 
 def _audit_from_hash(data: dict) -> AuditLog:
+    from zoneinfo import ZoneInfo
     return AuditLog(
         id=data.get(b"id", b"").decode(),
-        timestamp=_parse_dt(data.get(b"timestamp", b"").decode()) or datetime.utcnow(),
+        timestamp=_parse_dt(data.get(b"timestamp", b"").decode()) or datetime.now(ZoneInfo("Asia/Shanghai")),
         user_id=data.get(b"user_id", b"").decode() or None,
         key_id=data.get(b"key_id", b"").decode() or None,
         auth_type=data.get(b"auth_type", b"").decode(),
@@ -106,6 +107,7 @@ def _audit_from_hash(data: dict) -> AuditLog:
         ip_address=data.get(b"ip_address", b"").decode() or None,
         request_id=data.get(b"request_id", b"").decode() or None,
         error_code=data.get(b"error_code", b"").decode() or None,
+        user_name=data.get(b"user_name", b"").decode() or None,
     )
 
 
@@ -203,8 +205,10 @@ class RedisUserKeyRepository:
                 continue
             if is_active is not None and u.is_active != is_active:
                 continue
-            if search and search.lower() not in u.username.lower():
-                continue
+            if search:
+                s = search.lower()
+                if s not in u.username.lower() and s not in (u.name or "").lower():
+                    continue
             users.append(u)
 
         users.sort(key=lambda x: x.created_at, reverse=True)
@@ -399,6 +403,7 @@ class RedisUserKeyRepository:
             "status_code": str(entry.status_code), "tokens_used": str(entry.tokens_used),
             "ip_address": entry.ip_address or "", "request_id": entry.request_id or "",
             "error_code": entry.error_code or "",
+            "user_name": entry.user_name or "",
         }
         pipe = self._r.pipeline()
         pipe.hset(_audit_key(audit_id), mapping={k: v for k, v in data.items() if v})

@@ -87,6 +87,7 @@ audit_table = sa.Table(
     sa.Column("ip_address", sa.String(64), nullable=True),
     sa.Column("request_id", sa.String(64), nullable=True),
     sa.Column("error_code", sa.String(64), nullable=True),
+    sa.Column("user_name", sa.String(256), nullable=True),
     sa.Index("idx_audit_timestamp", "timestamp"),
     sa.Index("idx_audit_user_id", "user_id", "timestamp"),
     sa.Index("idx_audit_key_id", "key_id", "timestamp"),
@@ -181,6 +182,7 @@ def _row_to_audit(row: Any) -> AuditLog:
         ip_address=row.ip_address,
         request_id=row.request_id,
         error_code=row.error_code,
+        user_name=row.user_name if hasattr(row, "user_name") else None,
     )
 
 
@@ -205,6 +207,20 @@ class SqlUserKeyRepository:
                     await conn.execute(sa.text(col_sql))
             except Exception:
                 pass
+        # Schema migration: add user_name column to audit_logs if missing
+        try:
+            async with self._engine.connect() as conn:
+                cols = await conn.run_sync(
+                    lambda sync_conn: sa.inspect(sync_conn).get_columns(_TBL_AUDIT)
+                )
+                col_names = {c["name"] for c in cols}
+            if "user_name" not in col_names:
+                async with self._engine.begin() as conn:
+                    await conn.execute(
+                        sa.text(f"ALTER TABLE {_TBL_AUDIT} ADD COLUMN user_name VARCHAR(256) NULL")
+                    )
+        except Exception:
+            pass
 
     # ── Users ──────────────────────────────────────────────────────────
 
@@ -304,7 +320,12 @@ class SqlUserKeyRepository:
         if is_active is not None:
             conditions.append(users_table.c.is_active == is_active)
         if search:
-            conditions.append(users_table.c.username.contains(search))
+            conditions.append(
+                sa.or_(
+                    users_table.c.username.contains(search),
+                    users_table.c.name.contains(search),
+                )
+            )
 
         async with self._engine.connect() as conn:
             base = users_table.select()
@@ -537,6 +558,7 @@ class SqlUserKeyRepository:
                     ip_address=entry.ip_address,
                     request_id=entry.request_id,
                     error_code=entry.error_code,
+                    user_name=entry.user_name,
                 )
             )
 

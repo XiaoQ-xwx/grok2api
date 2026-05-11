@@ -351,6 +351,7 @@
         "batchConcurrency": "批量操作并发",
         "egressProxy": "出站代理设置",
         "clearance": "Cloudflare Clearance",
+        "zenproxy": "ZenProxy 代理池",
         "retry": "重试策略",
         "timeouts": "请求超时设置",
         "imageProtocol": "NSFW 与图像协议",
@@ -636,6 +637,54 @@
         "logMaxFiles": {
           "label": "日志保留天数",
           "desc": "按天轮转时最多保留的日志文件数量。默认 7。"
+        },
+        "zenproxyEnabled": {
+          "label": "启用 ZenProxy",
+          "desc": "启用后自动从 ZenProxy 拉取代理注入到 proxy_pool。需确保 proxy.egress.mode = proxy_pool。"
+        },
+        "zenproxyServer": {
+          "label": "ZenProxy 服务地址",
+          "desc": "ZenProxy 服务地址，如 https://zenproxy.top。"
+        },
+        "zenproxyApiKey": {
+          "label": "ZenProxy API Key",
+          "desc": "ZenProxy 用户 API Key，可在 ZenProxy 个人页面获取。"
+        },
+        "zenproxyPoolSize": {
+          "label": "代理数量",
+          "desc": "每次从 ZenProxy 拉取的代理数量上限。"
+        },
+        "zenproxyCountry": {
+          "label": "国家过滤",
+          "desc": "按国家代码过滤（如 US、JP），留空表示不过滤。"
+        },
+        "zenproxyType": {
+          "label": "代理类型过滤",
+          "desc": "过滤代理类型（vmess/vless/trojan/shadowsocks/hysteria2/socks5/http/https），留空=全部。curl_cffi 只能直接使用 http/socks5 类型。"
+        },
+        "zenproxyChatgpt": {
+          "label": "仅 ChatGPT 可用",
+          "desc": "仅拉取已验证支持 ChatGPT 的代理。"
+        },
+        "zenproxyGoogle": {
+          "label": "仅 Google 可用",
+          "desc": "仅拉取已验证支持 Google 的代理。"
+        },
+        "zenproxyResidential": {
+          "label": "仅住宅 IP",
+          "desc": "仅拉取住宅 IP 代理。"
+        },
+        "zenproxyRiskMax": {
+          "label": "最大风险评分",
+          "desc": "风险评分上限（0~1），0 表示不过滤。"
+        },
+        "zenproxyUseClientApi": {
+          "label": "使用 Client API",
+          "desc": "使用 /api/client/fetch 接口（含完整 outbound 配置），关闭则使用 /api/fetch。"
+        },
+        "zenproxyTimeout": {
+          "label": "请求超时（秒）",
+          "desc": "ZenProxy API 请求超时时间。"
         }
       }
     }
@@ -756,7 +805,8 @@
       "keys": "密钥数",
       "created": "创建时间",
       "lastLogin": "最后登录",
-      "actions": "操作"
+      "actions": "操作",
+      "searchPlaceholder": "搜索用户名或昵称"
     },
     "keys": {
       "title": "密钥管理",

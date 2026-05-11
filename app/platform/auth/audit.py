@@ -3,6 +3,7 @@
 import asyncio
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -77,7 +78,7 @@ class AuditMiddleware:
 
         return AuditLog(
             id=uuid.uuid4().hex,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(ZoneInfo("Asia/Shanghai")),
             user_id=ctx.user_id,
             key_id=ctx.key_id,
             auth_type=ctx.auth_type,
@@ -87,6 +88,7 @@ class AuditMiddleware:
             status_code=status_code,
             ip_address=ip,
             request_id=None,
+            user_name=ctx.user_name,
         )
 
     async def _write_log(self, entry: AuditLog) -> None:

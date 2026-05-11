@@ -26,6 +26,7 @@ dependencies = [
     "starlette>=0.48.0",
     "tiktoken>=0.8.0",
     "tomli-w>=1.2.0",
+    "tzdata>=2026.2",
 ]
 
 [dependency-groups]
