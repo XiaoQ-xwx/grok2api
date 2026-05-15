@@ -118,7 +118,6 @@ def _get_env_int(name: str, default: int, *, minimum: int) -> int:
 def _is_serverless() -> bool:
     return bool(
         os.getenv("RENDER")
-        or os.getenv("RENDER_EXTERNAL_HOSTNAME")  # Render guaranteed, fallback
         or os.getenv("VERCEL")
         or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
         or os.getenv("FUNCTIONS_WORKER_RUNTIME")

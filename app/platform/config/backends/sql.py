@@ -1,7 +1,5 @@
 """SQL config backend (MySQL / PostgreSQL)."""
 
-import asyncio
-import os
 from typing import Any
 
 import sqlalchemy as sa
@@ -9,12 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .base import ConfigBackend
 from ._serde import flatten, unflatten
-
-# Retry budget for ensuring the config table exists at startup.
-# On hosted PostgreSQL (Render, etc.) connection slots may be exhausted by
-# zombie connections from prior crash-loops — wait for them to drain.
-_MAX_ENSURE_TABLE_RETRIES = int(os.getenv("CONFIG_SQL_RETRIES", "10"))
-_ENSURE_TABLE_BASE_DELAY = float(os.getenv("CONFIG_SQL_RETRY_DELAY", "3.0"))
 
 _TABLE       = "config_store"
 _VERSION_KEY = "__version__"
@@ -52,19 +44,9 @@ class SqlConfigBackend(ConfigBackend):
     async def _ensure_table(self) -> None:
         if self._ready:
             return
-        last_exc: BaseException | None = None
-        for attempt in range(_MAX_ENSURE_TABLE_RETRIES):
-            try:
-                async with self._engine.begin() as conn:
-                    await conn.run_sync(_metadata.create_all)
-                self._ready = True
-                return
-            except Exception as exc:
-                last_exc = exc
-                if attempt < _MAX_ENSURE_TABLE_RETRIES - 1:
-                    delay = _ENSURE_TABLE_BASE_DELAY * (1.5 ** attempt)
-                    await asyncio.sleep(delay)
-        raise last_exc  # type: ignore[misc]
+        async with self._engine.begin() as conn:
+            await conn.run_sync(_metadata.create_all)
+        self._ready = True
 
     async def load(self) -> dict[str, Any]:
         await self._ensure_table()
