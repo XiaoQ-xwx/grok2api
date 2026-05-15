@@ -354,22 +354,21 @@ def _prepare_sql_url_and_connect_args(
 
 
 def _is_serverless() -> bool:
-    """Detect common constrained-connection hosted environments."""
+    """Detect common serverless environments (Vercel, AWS Lambda, etc.)."""
     return bool(
-        os.getenv("RENDER")
-        or os.getenv("VERCEL")
+        os.getenv("VERCEL")
         or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
         or os.getenv("FUNCTIONS_WORKER_RUNTIME")  # Azure Functions
     )
 
 
 def _sql_engine_kwargs(connect_args: dict[str, Any] | None) -> dict[str, Any]:
-    # In hosted/serverless environments each process owns its own pool. Keep the
-    # default small to avoid exhausting low-tier PostgreSQL connection limits.
+    # In serverless environments each function instance is short-lived and may
+    # run concurrently.  Keep pools small to avoid exhausting DB connections.
     serverless = _is_serverless()
     kwargs: dict[str, Any] = {
         "pool_size":    _get_env_int("ACCOUNT_SQL_POOL_SIZE",    1 if serverless else 5,  minimum=1),
-        "max_overflow": _get_env_int("ACCOUNT_SQL_MAX_OVERFLOW", 1 if serverless else 10, minimum=0),
+        "max_overflow": _get_env_int("ACCOUNT_SQL_MAX_OVERFLOW", 2 if serverless else 10, minimum=0),
         "pool_timeout": _get_env_int("ACCOUNT_SQL_POOL_TIMEOUT", 30, minimum=1),
         "pool_recycle": _get_env_int("ACCOUNT_SQL_POOL_RECYCLE", 1800, minimum=0),
         "pool_pre_ping": True,
