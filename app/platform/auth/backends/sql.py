@@ -1,6 +1,6 @@
 """Shared SQLAlchemy Core backend for user/key/audit storage (MySQL / PostgreSQL / SQLite)."""
 
-import json
+import os
 import ssl
 import uuid
 from datetime import datetime
@@ -17,10 +17,8 @@ from ..models import (
     AuditLogQuery,
     User,
     UserApiKey,
-    UserCreate,
     UserUpdate,
 )
-from ..repository import UserKeyRepository
 
 _TBL_USERS = "users"
 _TBL_KEYS = "user_api_keys"
@@ -109,6 +107,39 @@ def _engine_key(dialect: str, url: str) -> str:
     return f"{dialect}::{url}"
 
 
+def _get_env_int(name: str, default: int, *, minimum: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)).strip())
+    except (TypeError, ValueError):
+        return default
+    return max(value, minimum)
+
+
+def _is_serverless() -> bool:
+    return bool(
+        os.getenv("RENDER")
+        or os.getenv("VERCEL")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("FUNCTIONS_WORKER_RUNTIME")
+    )
+
+
+def _sql_engine_kwargs(connect_args: dict[str, Any] | None) -> dict[str, Any]:
+    serverless = _is_serverless()
+    kwargs: dict[str, Any] = {
+        "echo": False,
+        "pool_size": _get_env_int("ACCOUNT_SQL_POOL_SIZE", 1 if serverless else 5, minimum=1),
+        "max_overflow": _get_env_int("ACCOUNT_SQL_MAX_OVERFLOW", 1 if serverless else 10, minimum=0),
+        "pool_timeout": _get_env_int("ACCOUNT_SQL_POOL_TIMEOUT", 30, minimum=1),
+        "pool_recycle": _get_env_int("ACCOUNT_SQL_POOL_RECYCLE", 1800, minimum=0),
+        "pool_pre_ping": True,
+        "pool_use_lifo": True,
+    }
+    if connect_args:
+        kwargs["connect_args"] = connect_args
+    return kwargs
+
+
 def _get_or_create_engine(dialect: str, url: str, connect_args: dict[str, Any] | None = None) -> AsyncEngine:
     key = _engine_key(dialect, url)
     with _ENGINE_LOCK:
@@ -118,10 +149,7 @@ def _get_or_create_engine(dialect: str, url: str, connect_args: dict[str, Any] |
                     url, echo=False, connect_args={"check_same_thread": False}
                 )
             else:
-                kw: dict[str, Any] = {"echo": False, "pool_size": 10, "max_overflow": 20}
-                if connect_args:
-                    kw["connect_args"] = connect_args
-                _ENGINE_CACHE[key] = create_async_engine(url, **kw)
+                _ENGINE_CACHE[key] = create_async_engine(url, **_sql_engine_kwargs(connect_args))
         return _ENGINE_CACHE[key]
 
 
