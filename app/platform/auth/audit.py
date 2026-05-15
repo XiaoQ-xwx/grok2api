@@ -2,10 +2,11 @@
 
 import asyncio
 import uuid
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from app.platform.logging.logger import logger
 
 from .models import ApiKeyContext, AuditLog
 
@@ -78,7 +79,7 @@ class AuditMiddleware:
 
         return AuditLog(
             id=uuid.uuid4().hex,
-            timestamp=datetime.now(ZoneInfo("Asia/Shanghai")),
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
             user_id=ctx.user_id,
             key_id=ctx.key_id,
             auth_type=ctx.auth_type,
@@ -96,5 +97,5 @@ class AuditMiddleware:
             repo = self._get_repo()
             if repo is not None:
                 await repo.write_audit_log(entry)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("audit log write failed: error={}", exc)

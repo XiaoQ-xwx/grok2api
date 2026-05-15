@@ -1476,12 +1476,16 @@ function doReset() {
 }
 
 // ── Admin: Users panel ─────────────────────────────────────────────────────
-async function loadUsers() {
+const userListState = { page: 1, pageSize: 50, search: '' };
+
+async function loadUsers(page = userListState.page, search = userListState.search) {
   try {
-    const resp = await fetch(ADMIN_API + '/users', { headers: await authHeaders() });
+    const params = new URLSearchParams({ page: String(page), page_size: String(userListState.pageSize) });
+    if (search) params.set('search', search);
+    const resp = await fetch(ADMIN_API + '/users?' + params.toString(), { headers: await authHeaders() });
     if (!resp.ok) throw new Error(resp.status);
     return await resp.json();
-  } catch { return { items: [], total: 0 }; }
+  } catch { return { items: [], total: 0, page, page_size: userListState.pageSize, total_pages: 1 }; }
 }
 
 async function authHeaders() {
@@ -1621,23 +1625,14 @@ async function loadGlobalRpm() {
 
 async function searchUsers() {
   const input = document.getElementById('userSearchInput');
-  const term = input?.value.trim();
-  const data = term ? await loadUsersWithSearch(term) : await loadUsers();
-  const container = document.getElementById('usersTable');
-  if (!container) return;
-  if (!data.items.length) {
-    container.innerHTML = `<div class="empty-state">${term ? '暂无匹配用户' : '暂无用户数据'}</div>`;
-    return;
-  }
-  renderUsersTable(data);
+  userListState.search = input?.value.trim() || '';
+  userListState.page = 1;
+  await populateUsersTable();
 }
 
-async function loadUsersWithSearch(search) {
-  try {
-    const resp = await fetch(ADMIN_API + '/users?search=' + encodeURIComponent(search), { headers: await authHeaders() });
-    if (!resp.ok) throw new Error(resp.status);
-    return await resp.json();
-  } catch { return { items: [], total: 0 }; }
+async function changeUsersPage(delta) {
+  userListState.page = Math.max(1, userListState.page + delta);
+  await populateUsersTable();
 }
 
 function renderUsersTable(data) {
@@ -1658,6 +1653,13 @@ function renderUsersTable(data) {
       <td><button class="btn btn-xs btn-outline" onclick="UserManageModal._loadAndOpen('${escHtml(u.id)}')">管理</button></td>
     </tr>`;
   }).join('');
+  const page = data.page || userListState.page;
+  const totalPages = data.total_pages || 1;
+  const pager = `<div class="admin-filter-bar" style="justify-content:flex-end;margin-top:10px">
+    <span style="color:var(--fg-muted);font-size:12px">共 ${data.total || 0} 位用户，第 ${page} / ${totalPages} 页</span>
+    <button class="btn btn-sm btn-outline" onclick="changeUsersPage(-1)" ${page <= 1 ? 'disabled' : ''}>上一页</button>
+    <button class="btn btn-sm btn-outline" onclick="changeUsersPage(1)" ${page >= totalPages ? 'disabled' : ''}>下一页</button>
+  </div>`;
   container.innerHTML = `<table><thead><tr>
     <th data-i18n="admin.users.username">用户名</th>
     <th data-i18n="admin.users.name">名称</th>
@@ -1668,7 +1670,7 @@ function renderUsersTable(data) {
     <th data-i18n="admin.users.keys">密钥数</th>
     <th data-i18n="admin.users.created">创建时间</th>
     <th data-i18n="admin.users.actions">操作</th>
-  </tr></thead><tbody>${rows}</tbody></table>`;
+  </tr></thead><tbody>${rows}</tbody></table>${pager}`;
 }
 
 async function saveGlobalRpm() {
@@ -1684,10 +1686,11 @@ async function saveGlobalRpm() {
 
 async function populateUsersTable() {
   const data = await loadUsers();
+  userListState.page = data.page || userListState.page;
   const container = document.getElementById('usersTable');
   if (!container) return;
   if (!data.items.length) {
-    container.innerHTML = `<div class="empty-state">暂无用户数据</div>`;
+    container.innerHTML = `<div class="empty-state">${userListState.search ? '暂无匹配用户' : '暂无用户数据'}</div>`;
     return;
   }
   renderUsersTable(data);

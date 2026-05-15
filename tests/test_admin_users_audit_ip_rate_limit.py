@@ -1,9 +1,9 @@
 """Tests for admin user management, audit logs, IP tracking, and rate limiting."""
 
 import asyncio
-import time
 from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 import pytest_asyncio
@@ -11,7 +11,6 @@ from httpx import AsyncClient
 from starlette.requests import Request
 
 from app.platform.auth import rate_limit as rate_limit_module
-from app.platform.auth.keygen import generate_api_key
 from app.platform.auth.middleware import _get_client_ip
 from app.platform.auth.models import AuditLog, AuditLogQuery, UserUpdate
 from app.platform.auth.rate_limit import RedisSlidingWindowLimiter, get_effective_rpm
@@ -108,6 +107,7 @@ async def audit_seed(repo, user, linuxdo_user, api_key):
             status_code=200,
             tokens_used=25,
             ip_address="192.168.1.100",
+            user_name="Stored Name",
         ),
         AuditLog(
             id="audit-chat-rate-limited",
@@ -430,6 +430,21 @@ class TestAdminAuditLogQuerying:
         r = await client.get("/admin/api/audit-logs", headers=admin_headers, params={"ip_address": ""})
         assert r.status_code == 200
         assert r.json()["total"] == 4
+
+    @pytest.mark.asyncio
+    async def test_query_audit_logs_returns_beijing_time_and_user_names(
+        self, client: AsyncClient, admin_headers, audit_seed, user, linuxdo_user
+    ) -> None:
+        r = await client.get("/admin/api/audit-logs", headers=admin_headers)
+        body = r.json()
+        assert r.status_code == 200
+
+        by_id = {item["id"]: item for item in body["items"]}
+        assert by_id["audit-chat-ok"]["user_name"] == "Stored Name"
+        assert by_id["audit-image-ok"]["user_name"] == (linuxdo_user.name or linuxdo_user.username)
+        ts = datetime.fromisoformat(by_id["audit-chat-ok"]["timestamp"])
+        assert ts.utcoffset() == ZoneInfo("Asia/Shanghai").utcoffset(ts)
+        assert ts.hour == 20
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("param_name", ["time_from", "time_to"])
